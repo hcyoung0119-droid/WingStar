@@ -19,49 +19,16 @@ class ShopScreen extends StatelessWidget {
           children: [
             const GreenRewardPreview(),
             const SizedBox(height: 20),
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        '리워드 샵',
-                        style: Theme.of(context).textTheme.headlineSmall
-                            ?.copyWith(fontWeight: FontWeight.w800),
-                      ),
-                      const SizedBox(height: 4),
-                      const Text(
-                        '교환 준비 중 · 아직 실제 상품이 발급되지 않아요.',
-                        style: TextStyle(color: WSColors.muted),
-                      ),
-                    ],
-                  ),
-                ),
-                Material(
-                  color: const Color(0xFFEAF1FF),
-                  borderRadius: BorderRadius.circular(999),
-                  child: InkWell(
-                    borderRadius: BorderRadius.circular(999),
-                    onTap: () => _showCoupons(context),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 8,
-                      ),
-                      child: Text(
-                        '🎟️ 쿠폰함 ${store.coupons.length}',
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w700,
-                          color: WSColors.primaryDark,
-                          fontSize: 13,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
+            Text(
+              '리워드 샵',
+              style: Theme.of(
+                context,
+              ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800),
+            ),
+            const SizedBox(height: 4),
+            const Text(
+              '교환 준비 중 · 아직 실제 상품이 발급되지 않아요.',
+              style: TextStyle(color: WSColors.muted),
             ),
             const SizedBox(height: 16),
             Container(
@@ -253,56 +220,6 @@ class ShopScreen extends StatelessWidget {
           ],
         ),
       ),
-    );
-  }
-
-  void _showCoupons(BuildContext context) {
-    showModalBottomSheet<void>(
-      context: context,
-      backgroundColor: Theme.of(context).colorScheme.surface,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      builder: (_) {
-        return Padding(
-          padding: const EdgeInsets.fromLTRB(20, 18, 20, 28),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                '쿠폰함',
-                style: TextStyle(fontWeight: FontWeight.w800, fontSize: 18),
-              ),
-              const SizedBox(height: 12),
-              if (store.coupons.isEmpty)
-                const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 24),
-                  child: Center(
-                    child: Text(
-                      '아직 교환한 쿠폰이 없어요',
-                      style: TextStyle(color: WSColors.muted),
-                    ),
-                  ),
-                )
-              else
-                for (final c in store.coupons.take(8))
-                  ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    leading: Text(
-                      c.emoji,
-                      style: const TextStyle(fontSize: 22),
-                    ),
-                    title: Text(
-                      c.title,
-                      style: const TextStyle(fontWeight: FontWeight.w700),
-                    ),
-                    subtitle: Text(c.at),
-                  ),
-            ],
-          ),
-        );
-      },
     );
   }
 }

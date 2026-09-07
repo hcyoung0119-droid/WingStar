@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter/foundation.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:wingstar/services/location_engine.dart';
 import 'package:wingstar/state/app_store.dart';
@@ -12,6 +13,7 @@ class PermissionLocationPlatform extends GeolocatorPlatform {
   int checks = 0, requests = 0, watches = 0;
   LocationPermission permission = LocationPermission.denied;
   final positions = StreamController<Position>.broadcast();
+  LocationSettings? settings;
 
   @override
   Future<bool> isLocationServiceEnabled() async => true;
@@ -30,12 +32,45 @@ class PermissionLocationPlatform extends GeolocatorPlatform {
 
   @override
   Stream<Position> getPositionStream({LocationSettings? locationSettings}) {
+    settings = locationSettings;
     watches++;
     return positions.stream;
   }
 }
 
 void main() {
+  test(
+    'iOS restores authorized fitness GPS without requesting permission again',
+    () async {
+      final previous = GeolocatorPlatform.instance;
+      final platform = PermissionLocationPlatform()
+        ..permission = LocationPermission.whileInUse;
+      GeolocatorPlatform.instance = platform;
+      debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+      final engine = LocationEngine(browserPermissions: false);
+      try {
+        await engine.resumeAuthorized();
+        expect(platform.requests, 0);
+        final settings = platform.settings as AppleSettings;
+        expect(settings.activityType, ActivityType.fitness);
+        expect(settings.allowBackgroundLocationUpdates, true);
+        expect(settings.showBackgroundLocationIndicator, true);
+        expect(settings.pauseLocationUpdatesAutomatically, false);
+        await engine.stop();
+        expect(platform.positions.hasListener, false);
+        platform.permission = LocationPermission.denied;
+        await engine.resumeAuthorized();
+        expect(platform.requests, 0);
+        expect(platform.watches, 1);
+        expect(engine.status, LocationStatus.permissionDenied);
+      } finally {
+        engine.dispose();
+        await platform.positions.close();
+        GeolocatorPlatform.instance = previous;
+        debugDefaultTargetPlatformOverride = null;
+      }
+    },
+  );
   test(
     'web GPS uses one watcher without a duplicate location permission request',
     () async {

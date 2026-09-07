@@ -1,0 +1,53 @@
+name: WingStar Free iPhone Build
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [codex/ios-free-install]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: wingstar-personal-iphone
+  cancel-in-progress: true
+
+jobs:
+  iphone:
+    # Standard runners in this existing public repository are free. Never run
+    # this job in a private fork, on a larger runner, or on a paid Mac service.
+    if: github.repository == 'bhaul0119-hue/Wingstar' && github.event.repository.private == false
+    runs-on: macos-15
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install the matching Flutter SDK without a retained cache
+        run: |
+          git clone --depth 1 --branch 3.44.8 https://github.com/flutter/flutter.git "$RUNNER_TEMP/flutter"
+          echo "$RUNNER_TEMP/flutter/bin" >> "$GITHUB_PATH"
+      - name: Resolve dependencies
+        run: flutter pub get
+      - name: Configure the lock screen extension
+        run: |
+          gem install --install-dir "$RUNNER_TEMP/wingstar-gems" xcodeproj --version 1.27.0 --no-document
+          GEM_HOME="$RUNNER_TEMP/wingstar-gems" GEM_PATH="$RUNNER_TEMP/wingstar-gems" ruby tool/configure_iphone.rb
+      - name: Check Dart code and walking recovery
+        run: |
+          flutter analyze
+          flutter test
+      - name: Compile for a physical iPhone without Apple credentials
+        run: flutter build ios --release --no-codesign
+      - name: Package the unsigned app
+        run: bash tool/package_iphone.sh
+      - name: Keep the install file in a draft release
+        # Do not use Actions artifact/cache storage or a paid signing service.
+        env:
+          GH_TOKEN: ${{ github.token }}
+          WINGSTAR_SHA: ${{ github.sha }}
+        run: |
+          gh release create "iphone-personal-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}" \
+            build/iphone/WingStar-iPhone-unsigned.ipa \
+            build/iphone/SHA256SUMS.txt \
+            --draft --target "$WINGSTAR_SHA" \
+            --title 'WingStar — 개인 아이폰 설치 파일' \
+            --notes-file docs/iphone-release-notes.md

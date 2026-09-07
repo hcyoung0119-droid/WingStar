@@ -8,7 +8,8 @@ import '../services/walking_meditation.dart';
 import '../services/social_store.dart';
 
 import 'package:flutter/foundation.dart';
-import 'package:flutter/widgets.dart' show StringCharacters;
+import 'package:flutter/widgets.dart'
+    show StringCharacters, AppLifecycleListener, AppLifecycleState;
 import 'package:intl/intl.dart';
 
 enum CabinClass { economy, premiumEconomy, business, first }
@@ -237,6 +238,11 @@ class AppStore extends ChangeNotifier {
       }
     });
     if (kIsWeb || _stateReader != null) _restoreDeviceState();
+    if (this.stepEngine.usesIosPedometer) {
+      _nativeLifecycle = AppLifecycleListener(
+        onStateChange: _onNativeLifecycle,
+      );
+    }
     if (this.social.authenticated && name.isEmpty) {
       name = this.social.me['nickname'] as String? ?? '윙스타';
       onboarded = true;
@@ -265,6 +271,10 @@ class AppStore extends ChangeNotifier {
 
   final String Function()? _stateReader;
   final bool Function(String)? _stateWriter;
+  AppLifecycleListener? _nativeLifecycle;
+  Map<String, dynamic>? _pendingNativeWalk;
+  String _stepsDate = DateTime.now().toIso8601String().substring(0, 10);
+  Duration _restoredWalkElapsed = Duration.zero;
   bool get _persistsDeviceState => kIsWeb || _stateWriter != null;
   final List<Map<String, dynamic>> meditationHistory = [];
   bool preparingMeditation = false;
@@ -283,7 +293,7 @@ class AppStore extends ChangeNotifier {
   bool recordLocation = false;
   String sensitivity = 'normal';
   double _previousDistanceMeters = 0;
-  Duration get walkElapsed => _walkClock.elapsed;
+  Duration get walkElapsed => _restoredWalkElapsed + _walkClock.elapsed;
   bool get isTestSession =>
       !stepEngine.canUsePhysicalAccelerometer ||
       stepEngine.status == StepEngineStatus.unavailable;
@@ -303,6 +313,7 @@ class AppStore extends ChangeNotifier {
     _saveTimer?.cancel();
     _toastTimer?.cancel();
     _disposed = true;
+    _nativeLifecycle?.dispose();
     _walkTimer?.cancel();
     _walkClock.stop();
     meditation.removeListener(_onMeditation);
@@ -322,7 +333,9 @@ class AppStore extends ChangeNotifier {
   bool _saveDeviceState() {
     return (_stateWriter ?? bridge.saveDeviceState)(
       jsonEncode({
-        'date': DateTime.now().toIso8601String().substring(0, 10),
+        'date': stepEngine.usesIosPedometer
+            ? _stepsDate
+            : DateTime.now().toIso8601String().substring(0, 10),
         'onboarded': onboarded,
         'name': name,
         'job': job,
@@ -332,6 +345,13 @@ class AppStore extends ChangeNotifier {
         'profileBadge': profileBadge,
         'darkMode': darkMode,
         'steps': steps,
+        'nativeWalk': walking && stepEngine.sessionStartedAt != null
+            ? {
+                'startedAt': stepEngine.sessionStartedAt!.toIso8601String(),
+                'accountedSteps': _accountedSteps,
+                'day': stepEngine.nativeDay ?? _stepsDate,
+              }
+            : null,
         'stepGoal': stepGoal,
         'distance': distanceKm * 1000,
         'wsc': wsc,
@@ -428,6 +448,9 @@ class AppStore extends ChangeNotifier {
       stepGoal = d['stepGoal'] as int? ?? stepGoal;
       if (stepGoal < 1) stepGoal = 8000;
       steps = sameDay ? (d['steps'] as int? ?? 0) : 0;
+      if (stepEngine.usesIosPedometer && d['nativeWalk'] is Map) {
+        _pendingNativeWalk = Map<String, dynamic>.from(d['nativeWalk']);
+      }
       _previousDistanceMeters = sameDay
           ? (d['distance'] as num? ?? 0).toDouble()
           : 0;
@@ -525,9 +548,19 @@ class AppStore extends ChangeNotifier {
   }
 
   void _onSteps() {
-    if (walking && !isTestSession) {
+    final nativeReady =
+        !stepEngine.usesIosPedometer ||
+        (stepEngine.status == StepEngineStatus.running &&
+            stepEngine.nativeDay != null);
+    if (walking && !isTestSession && nativeReady) {
+      if (stepEngine.usesIosPedometer && stepEngine.nativeDay != _stepsDate) {
+        _stepsDate = stepEngine.nativeDay!;
+        steps = 0;
+        _accountedSteps = 0;
+        rewardedStepsToday = 0;
+      }
       final delta = stepEngine.steps - _accountedSteps;
-      _accountedSteps = stepEngine.steps;
+      _accountedSteps = max(_accountedSteps, stepEngine.steps);
       if (delta > 0) {
         steps += delta;
         bridge.recordSocialSteps(delta);
@@ -537,6 +570,63 @@ class AppStore extends ChangeNotifier {
     }
     meditation.sample(steps, distanceKm * 1000);
     notifyListeners();
+  }
+
+  void _onNativeLifecycle(AppLifecycleState state) {
+    if (_disposed) return;
+    if (state == AppLifecycleState.resumed) {
+      _appVisible = true;
+      if (walking && !syncing) unawaited(stepEngine.reconcile());
+    } else if (state == AppLifecycleState.hidden ||
+        state == AppLifecycleState.paused) {
+      _appVisible = false;
+      pauseMeditation(reason: '코스는 일시정지했어요. 걷기 기록은 계속 이어져요.');
+      if (_persistsDeviceState) _saveDeviceState();
+    }
+  }
+
+  /// Called after the first frame; recovering a saved walk never asks for access.
+  Future<void> restoreWalkingSession() async {
+    final saved = _pendingNativeWalk;
+    if (saved == null || walking || syncing || _disposed) return;
+    _pendingNativeWalk = null;
+    final start = DateTime.tryParse(saved['startedAt'] as String? ?? '');
+    final now = DateTime.now();
+    if (start == null ||
+        start.isAfter(now) ||
+        now.difference(start) > const Duration(days: 7)) {
+      return;
+    }
+    syncing = true;
+    walking = true;
+    _accountedSteps = saved['day'] == _stepsDate
+        ? (saved['accountedSteps'] as int? ?? 0)
+        : 0;
+    _restoredWalkElapsed = now.difference(start);
+    _walkClock.start();
+    notifyListeners();
+    try {
+      await stepEngine.restoreSession(start);
+      if (_disposed) return;
+      if (stepEngine.status != StepEngineStatus.running) {
+        walking = false;
+        _walkClock.stop();
+        await stepEngine.stop(resetStatusOnly: true);
+        showToast('이전 걸음은 저장되어 있어요. 권한을 확인하고 걷기를 다시 시작해 주세요.');
+        return;
+      }
+      if (recordLocation) await locationEngine.resumeAuthorized();
+      if (_disposed) return;
+      _walkTimer = Timer.periodic(
+        const Duration(seconds: 1),
+        (_) => notifyListeners(),
+      );
+      showToast('이전 산책의 걸음 기록을 이어받았어요.');
+    } finally {
+      syncing = false;
+      if (_persistsDeviceState) _saveDeviceState();
+      notifyListeners();
+    }
   }
 
   void simulateShake() {
@@ -556,8 +646,12 @@ class AppStore extends ChangeNotifier {
     if (!walking || syncing) return;
     syncing = true;
     notifyListeners();
-    _accountedSteps = 0;
-    await stepEngine.retryCalibration();
+    if (stepEngine.usesIosPedometer) {
+      await stepEngine.reconcile();
+    } else {
+      _accountedSteps = 0;
+      await stepEngine.retryCalibration();
+    }
     if (_disposed) return;
     syncing = false;
     notifyListeners();
@@ -1270,6 +1364,9 @@ class AppStore extends ChangeNotifier {
     notifyListeners();
     try {
       if (walking) {
+        // Query the final historical delta while _onSteps can still credit it.
+        await stepEngine.reconcile();
+        if (_disposed) return;
         if (meditation.status == MeditationStatus.running) {
           pauseMeditation(reason: '걷기 측정이 종료되어 코스를 일시정지했어요.');
         }
@@ -1277,6 +1374,7 @@ class AppStore extends ChangeNotifier {
         _walkClock.stop();
         _walkTimer?.cancel();
         await Future.wait([stepEngine.stop(), locationEngine.stop()]);
+        if (_persistsDeviceState) _saveDeviceState();
         if (!_disposed) {
           lastSettleNote = '걷기 기록 완료 · 보상 서버 미연결';
           showToast('걷기 기록을 마쳤어요');
@@ -1288,9 +1386,11 @@ class AppStore extends ChangeNotifier {
         testSteps = 0;
         walking = true;
         _walkClock.reset();
+        _restoredWalkElapsed = Duration.zero;
         _walkClock.start();
         await stepEngine.start();
         if (_disposed) return;
+        if (_persistsDeviceState) _saveDeviceState();
         if (recordLocation) await locationEngine.start();
         if (_disposed) return;
         _walkTimer = Timer.periodic(
