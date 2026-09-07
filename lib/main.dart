@@ -117,11 +117,7 @@ class RootShell extends StatelessWidget {
           IndexedStack(
             index: store.tab,
             children: [
-              HomeScreen(
-                store: store,
-                onOpenBreathing: () => _openBreathing(context),
-                onOpenMind: () => store.setTab(1),
-              ),
+              HomeScreen(store: store, onOpenMind: store.openMind),
               MindScreen(
                 store: store,
                 onOpenBreathing: () => _openBreathing(context),

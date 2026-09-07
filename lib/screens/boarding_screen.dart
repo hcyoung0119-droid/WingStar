@@ -1,5 +1,3 @@
-import 'package:flutter/foundation.dart';
-import '../widgets/app_sharing_card.dart';
 import 'package:flutter/material.dart';
 import 'package:wingstar/state/app_store.dart';
 import 'package:wingstar/theme/app_theme.dart';
@@ -165,11 +163,10 @@ class _BoardingScreenState extends State<BoardingScreen> {
             ],
             const SizedBox(height: 16),
             const Text(
-              '데모 — 200걸음=1 Wing Coin · 미션 · 샵 · ESG · Premium AI',
+              '걷기 · 명상 · 플로깅 · ESG, 나와 지구를 돌보는 일상',
               textAlign: TextAlign.center,
               style: TextStyle(fontSize: 12, color: WSColors.muted),
             ),
-            if (kIsWeb) ...[const SizedBox(height: 16), const AppSharingCard()],
           ],
         ),
       ),

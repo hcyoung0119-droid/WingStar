@@ -5,6 +5,7 @@ import 'package:wingstar/screens/premium_screen.dart';
 import 'package:wingstar/state/app_store.dart';
 import 'package:wingstar/theme/app_theme.dart';
 import 'package:wingstar/widgets/detail_charts.dart';
+import 'package:wingstar/widgets/mind_calendar.dart';
 
 class MindScreen extends StatefulWidget {
   const MindScreen({super.key, required this.store, this.onOpenBreathing});
@@ -21,7 +22,6 @@ class _MindScreenState extends State<MindScreen> {
   final journalCtrl = TextEditingController();
   final journalTitleCtrl = TextEditingController();
   final tags = <String>{};
-  int mode = 0; // 0 emotion · 1 journal · 2 smile · 3 calendar
 
   static const options = [
     (Emotion.great, '😄', '최고예요'),
@@ -49,6 +49,7 @@ class _MindScreenState extends State<MindScreen> {
   @override
   Widget build(BuildContext context) {
     final store = widget.store;
+    final mode = store.mindSection.index;
     return SkyBackground(
       dark: store.darkMode,
       child: SafeArea(
@@ -82,7 +83,9 @@ class _MindScreenState extends State<MindScreen> {
                       child: ChoiceChip(
                         label: Text(entry.$2),
                         selected: mode == entry.$1,
-                        onSelected: (_) => setState(() => mode = entry.$1),
+                        onSelected: (_) => setState(
+                          () => store.openMind(MindSection.values[entry.$1]),
+                        ),
                       ),
                     ),
                 ],
@@ -92,7 +95,7 @@ class _MindScreenState extends State<MindScreen> {
             if (mode == 0) ..._emotion(store),
             if (mode == 1) ..._journal(store),
             if (mode == 2) ..._smile(store),
-            if (mode == 3) ..._calendar(store),
+            if (mode == 3) MindCalendar(store: store),
             const SizedBox(height: 10),
             GlassCard(
               onTap: () {
@@ -460,55 +463,6 @@ class _MindScreenState extends State<MindScreen> {
               ),
               onPressed: store.completeSmile,
               child: const Text('미소 연습 완료'),
-            ),
-          ],
-        ),
-      ),
-    ];
-  }
-
-  List<Widget> _calendar(AppStore store) {
-    return [
-      GlassCard(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              '월간 감정 캘린더',
-              style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
-            ),
-            const SizedBox(height: 8),
-            const Text(
-              '기록이 있는 날은 이모지로 표시돼요.',
-              style: TextStyle(color: WSColors.muted),
-            ),
-            const SizedBox(height: 12),
-            GridView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: 28,
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 7,
-                mainAxisSpacing: 6,
-                crossAxisSpacing: 6,
-              ),
-              itemBuilder: (_, i) {
-                final day = i + 1;
-                final hit = store.mindEntries.any((e) => e.date.day == day);
-                return Container(
-                  alignment: Alignment.center,
-                  decoration: BoxDecoration(
-                    color: hit
-                        ? const Color(0xFFE8ECFA)
-                        : const Color(0xFFF3F6FB),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Text(
-                    hit ? '💙' : '$day',
-                    style: TextStyle(fontSize: hit ? 14 : 12),
-                  ),
-                );
-              },
             ),
           ],
         ),

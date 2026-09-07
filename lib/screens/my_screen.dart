@@ -24,7 +24,6 @@ class MyScreen extends StatelessWidget {
         child: ListView(
           padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
           children: [
-            if (kIsWeb) ...[const AppSharingCard(), const SizedBox(height: 16)],
             Text(
               '마이',
               style: Theme.of(
@@ -64,7 +63,7 @@ class MyScreen extends StatelessWidget {
                           style: const TextStyle(color: WSColors.muted),
                         ),
                         Text(
-                          'Wing Coin ${store.wsc} · ≈${store.wscKrwValue}원',
+                          '윙코인 ${store.wsc}',
                           style: const TextStyle(
                             color: WSColors.primary,
                             fontWeight: FontWeight.w600,
@@ -183,16 +182,16 @@ class MyScreen extends StatelessWidget {
                     style: TextStyle(fontWeight: FontWeight.w800),
                   ),
                   const SizedBox(height: 8),
-                  Text('• 센서 → 필터/검증 → 서버 확정 → Wing Coin'),
-                  Text('• ${RewardRules.stepsPerCoin}걸음 = 1코인 · 잔여 걸음 자동 이월'),
-                  Text('• 1코인 ≈ ${RewardRules.coinWorthKrw}원 · 쿠폰/제휴 상품만 사용'),
-                  Text(
-                    '• 일일 한도 ${RewardRules.dailyHardCapSteps}걸음 · anti-cheat quality',
+                  const Text('걷기와 마음 돌봄, 환경 실천을 꾸준히 기록해 보세요.'),
+                  const SizedBox(height: 6),
+                  const Text(
+                    '현재 코인은 체험용이며 상품 교환은 준비 중입니다.',
+                    style: TextStyle(color: WSColors.muted),
                   ),
-                  const Text('• 앱에서 coin++ 금지 · 원장 append-only'),
                 ],
               ),
             ),
+            if (kIsWeb) ...[const SizedBox(height: 20), const AppSharingCard()],
           ],
         ),
       ),

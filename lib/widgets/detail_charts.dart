@@ -133,14 +133,13 @@ class _DetailChartsPanelState extends State<DetailChartsPanel> {
       case 1:
         return [
           ('평균 감정', store.weeklyMoodAvg.toStringAsFixed(1)),
-          ('마음 지수', '${store.mindCalmScore}'),
+          ('일기', '${store.journals.length}'),
           ('기록 수', '${store.mindEntries.length}'),
         ];
       case 2:
         return [
-          ('주간 적립', '${store.weeklyCoinsEarned}C'),
-          ('잔액', '${store.wsc}C'),
-          ('환산', '${store.wscKrwValue}원'),
+          ('주간 적립', '${store.weeklyCoinsEarned}'),
+          ('잔액', '${store.wsc}'),
         ];
       case 3:
         return [
@@ -195,7 +194,7 @@ class _DetailChartsPanelState extends State<DetailChartsPanel> {
           values: store.weeklyCoinSeries,
           labels: store.weekLabels,
           color: WSColors.coin,
-          unit: 'C',
+          unit: '',
         );
       case 3:
         return SoftLineChart(
@@ -259,7 +258,7 @@ class _DetailChartsPanelState extends State<DetailChartsPanel> {
       },
       minY: 0,
       maxY: focus == 1 ? 5 : null,
-      unit: focus == 2 ? 'C' : '점',
+      unit: focus == 2 ? '' : '점',
       sparseLabels: true,
     );
   }
@@ -336,7 +335,7 @@ class SoftBarChart extends StatelessWidget {
             getTooltipItem: (group, gIdx, rod, rIdx) {
               final label = labels[group.x.toInt()];
               final v = rod.toY;
-              final text = unit == '걸음' || unit == 'C'
+              final text = unit == '걸음' || unit.isEmpty
                   ? '${NumberFormat('#,###').format(v.round())}$unit'
                   : '${v.toStringAsFixed(1)}$unit';
               return BarTooltipItem(

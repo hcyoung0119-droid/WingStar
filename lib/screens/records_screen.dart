@@ -38,6 +38,36 @@ class RecordsScreen extends StatelessWidget {
               style: TextStyle(color: WSColors.muted),
             ),
             const SizedBox(height: 14),
+            GlassCard(
+              child: ExpansionTile(
+                tilePadding: EdgeInsets.zero,
+                title: const Text(
+                  '활동 미션',
+                  style: TextStyle(fontWeight: FontWeight.w800),
+                ),
+                children: [
+                  for (final mission in store.missions)
+                    ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      leading: Text(
+                        mission.emoji,
+                        style: const TextStyle(fontSize: 22),
+                      ),
+                      title: Text(mission.title),
+                      subtitle: Text(
+                        '${mission.progress.clamp(0, mission.target)}/${mission.target} · +${mission.rewardWsc}',
+                      ),
+                      trailing: FilledButton.tonal(
+                        onPressed: mission.ready
+                            ? () => store.claimMission(mission.id)
+                            : null,
+                        child: Text(mission.claimed ? '완료' : '받기'),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 14),
             DetailChartsPanel(store: store),
             const SizedBox(height: 16),
             GlassCard(
@@ -49,7 +79,8 @@ class RecordsScreen extends StatelessWidget {
                     style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
                   ),
                   const SizedBox(height: 8),
-                  _KV('마음 지수', '${store.mindCalmScore}점'),
+                  _KV('명상', '${store.breathingSessions}회'),
+                  _KV('플로깅', '${store.ploggingSessions}회'),
                   _KV(
                     'ESG 종합',
                     '${store.esgScore}점 (E${store.envScore}/S${store.socialScore}/G${store.govScore})',
@@ -87,10 +118,7 @@ class RecordsScreen extends StatelessWidget {
                   ),
                   _KV('검증 품질', '${(store.qualityScore * 100).round()}%'),
                   _KV('최근 정산', store.lastSettleNote),
-                  _KV(
-                    '지갑 환산',
-                    '≈ ${store.wscKrwValue}원 (1코인=${RewardRules.coinWorthKrw}원)',
-                  ),
+                  _KV('윙코인 잔액', '${store.wsc}'),
                 ],
               ),
             ),

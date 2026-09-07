@@ -46,8 +46,10 @@ void main() {
       ),
     );
     await tester.pump(const Duration(milliseconds: 600));
-    expect(find.text('걷기 시작'), findsOneWidget);
-    expect(find.text('걷기 측정 설정'), findsOneWidget);
+    expect(find.byKey(const Key('home-walking')), findsOneWidget);
+    expect(find.byKey(const Key('home-meditation')), findsOneWidget);
+    expect(find.byKey(const Key('home-plogging')), findsOneWidget);
+    expect(find.byKey(const Key('home-esg')), findsOneWidget);
     expect(tester.takeException(), isNull);
     if (const bool.fromEnvironment('CAPTURE_UI')) {
       final render =

@@ -96,7 +96,7 @@ class ShopScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 6),
                   Text(
-                    '${NumberFormat('#,###').format(store.wsc)} C',
+                    NumberFormat('#,###').format(store.wsc),
                     style: const TextStyle(
                       color: Colors.white,
                       fontSize: 40,
@@ -163,7 +163,7 @@ class ShopScreen extends StatelessWidget {
                                 ),
                               ),
                               Text(
-                                '${NumberFormat('#,###').format(item.price)} C',
+                                NumberFormat('#,###').format(item.price),
                                 style: const TextStyle(
                                   color: Color(0xFF2F9E44),
                                   fontWeight: FontWeight.w800,

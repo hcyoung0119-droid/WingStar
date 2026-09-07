@@ -1,34 +1,28 @@
 import 'package:flutter/material.dart';
-import '../widgets/walking_panel.dart';
-import 'package:wingstar/screens/ai_coach_screen.dart';
+import 'package:wingstar/screens/activity_screens.dart';
 import 'package:wingstar/screens/esg_screen.dart';
-import 'package:wingstar/screens/premium_screen.dart';
 import 'package:wingstar/state/app_store.dart';
 import 'package:wingstar/theme/app_theme.dart';
-import 'package:wingstar/widgets/step_ring.dart';
 
 class HomeScreen extends StatelessWidget {
-  const HomeScreen({
-    super.key,
-    required this.store,
-    required this.onOpenBreathing,
-    required this.onOpenMind,
-  });
-
+  const HomeScreen({super.key, required this.store, required this.onOpenMind});
   final AppStore store;
-  final VoidCallback onOpenBreathing;
-  final VoidCallback onOpenMind;
+  final ValueChanged<MindSection> onOpenMind;
 
-  void _push(BuildContext context, Widget page) {
-    Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => page));
+  void _push(BuildContext context, Widget Function() page) {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) =>
+            AnimatedBuilder(animation: store, builder: (_, _) => page()),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    final dark = store.darkMode;
     final quote = store.todayQuote;
     return SkyBackground(
-      dark: dark,
+      dark: store.darkMode,
       hero: true,
       child: SafeArea(
         bottom: false,
@@ -36,6 +30,118 @@ class HomeScreen extends StatelessWidget {
           padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
           children: [
             _Header(store: store),
+            const SizedBox(height: 24),
+            const Text(
+              '나와 지구를 돌보는 하루',
+              style: TextStyle(fontSize: 19, fontWeight: FontWeight.w800),
+            ),
+            const SizedBox(height: 6),
+            const Text(
+              '오늘 필요한 활동을 골라보세요.',
+              style: TextStyle(color: WSColors.muted),
+            ),
+            const SizedBox(height: 14),
+            GridView.count(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              crossAxisCount: 2,
+              mainAxisSpacing: 10,
+              crossAxisSpacing: 10,
+              childAspectRatio: .96,
+              children: [
+                _ActivityTile(
+                  key: const Key('home-walking'),
+                  title: '걷기',
+                  icon: Icons.directions_walk_rounded,
+                  color: WSColors.primary,
+                  background: WSColors.primarySoft,
+                  detail: '${store.steps}걸음',
+                  subtitle: store.walking ? '측정 중 · 이어서 보기' : '내 속도로 가볍게',
+                  onTap: () =>
+                      _push(context, () => WalkingScreen(store: store)),
+                ),
+                _ActivityTile(
+                  key: const Key('home-meditation'),
+                  title: '명상',
+                  icon: Icons.air_rounded,
+                  color: WSColors.mind,
+                  background: WSColors.lavender.withValues(alpha: .28),
+                  detail: '${store.breathingSessions}회 완료',
+                  subtitle: '숨을 고르는 시간',
+                  onTap: () =>
+                      _push(context, () => MeditationScreen(store: store)),
+                ),
+                _ActivityTile(
+                  key: const Key('home-plogging'),
+                  title: '플로깅',
+                  icon: Icons.recycling_rounded,
+                  color: WSColors.success,
+                  background: WSColors.mint.withValues(alpha: .4),
+                  detail: '${store.ploggingSessions}회 실천',
+                  subtitle: '산책길을 깨끗하게',
+                  onTap: () =>
+                      _push(context, () => PloggingScreen(store: store)),
+                ),
+                _ActivityTile(
+                  key: const Key('home-esg'),
+                  title: 'ESG',
+                  icon: Icons.public_rounded,
+                  color: const Color(0xFFB18730),
+                  background: WSColors.sunny.withValues(alpha: .48),
+                  detail: '${store.esgScore}점',
+                  subtitle: '함께 쌓는 좋은 변화',
+                  onTap: () => _push(context, () => EsgScreen(store: store)),
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
+            GlassCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    '마음 기록',
+                    style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      for (final item in [
+                        (MindSection.emotion, '감정', '💙', WSColors.peach),
+                        (MindSection.journal, '일기', '✍️', WSColors.lavender),
+                        (MindSection.smile, '미소', '😊', WSColors.sunny),
+                        (MindSection.calendar, '캘린더', '🗓️', WSColors.mint),
+                      ])
+                        Expanded(
+                          child: SoftActionTile(
+                            label: item.$2,
+                            emoji: item.$3,
+                            color: item.$4,
+                            onTap: () => onOpenMind(item.$1),
+                          ),
+                        ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 14),
+            GlassCard(
+              onTap: () => store.setTab(2),
+              child: const Row(
+                children: [
+                  Icon(Icons.history_rounded, color: WSColors.primary),
+                  SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      '활동 기록 · 미션',
+                      style: TextStyle(fontWeight: FontWeight.w700),
+                    ),
+                  ),
+                  Icon(Icons.chevron_right),
+                ],
+              ),
+            ),
             const SizedBox(height: 14),
             GlassCard(
               color: WSColors.primarySoft,
@@ -45,9 +151,8 @@ class HomeScreen extends StatelessWidget {
                   const Text(
                     '오늘의 문장',
                     style: TextStyle(
-                      fontSize: 11,
+                      fontSize: 12,
                       fontWeight: FontWeight.w700,
-                      letterSpacing: 1.2,
                       color: WSColors.primaryDark,
                     ),
                   ),
@@ -55,561 +160,9 @@ class HomeScreen extends StatelessWidget {
                   Text(
                     quote.$1,
                     style: const TextStyle(
-                      fontSize: 17,
-                      fontWeight: FontWeight.w700,
-                      height: 1.45,
-                      color: WSColors.foreground,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    '— ${quote.$2}',
-                    style: const TextStyle(color: WSColors.muted, fontSize: 13),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 12),
-            if (!store.isPremium)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 10),
-                child: GlassCard(
-                  onTap: () => _push(context, PremiumScreen(store: store)),
-                  child: const Row(
-                    children: [
-                      Icon(
-                        Icons.workspace_premium_rounded,
-                        color: WSColors.coin,
-                      ),
-                      SizedBox(width: 10),
-                      Expanded(
-                        child: Text(
-                          'AI 맞춤 습관 · 행동분석은 Premium',
-                          style: TextStyle(fontWeight: FontWeight.w800),
-                        ),
-                      ),
-                      Text(
-                        '보기',
-                        style: TextStyle(
-                          color: WSColors.primaryDark,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            Center(
-              child: StepRing(
-                progress: store.stepProgress,
-                steps: store.steps,
-                goal: store.stepGoal,
-              ),
-            ),
-            const SizedBox(height: 16),
-            Center(
-              child: FilledButton.icon(
-                style:
-                    FilledButton.styleFrom(
-                      backgroundColor: WSColors.primary,
-                      foregroundColor: Colors.white,
-                      elevation: 0,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 30,
-                        vertical: 14,
-                      ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(999),
-                      ),
-                    ).copyWith(
-                      shadowColor: WidgetStatePropertyAll(
-                        WSColors.primary.withValues(alpha: 0.45),
-                      ),
-                      elevation: const WidgetStatePropertyAll(6),
-                    ),
-                onPressed: store.syncing ? null : store.syncOrWalk,
-                icon: Icon(
-                  store.syncing
-                      ? Icons.sync
-                      : (store.walking
-                            ? Icons.stop_rounded
-                            : Icons.play_arrow_rounded),
-                  size: 22,
-                ),
-                label: Text(
-                  store.syncing
-                      ? '센서 준비 중…'
-                      : (store.walking ? '걷기 종료' : '걷기 시작'),
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w700,
-                    fontSize: 15,
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(height: 12),
-            WalkingPanel(store: store),
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                Expanded(
-                  child: SoftActionTile(
-                    label: '감정',
-                    emoji: '💙',
-                    color: WSColors.peach,
-                    onTap: onOpenMind,
-                  ),
-                ),
-                Expanded(
-                  child: SoftActionTile(
-                    label: '호흡',
-                    emoji: '🌬️',
-                    color: WSColors.lavender,
-                    onTap: onOpenBreathing,
-                  ),
-                ),
-                Expanded(
-                  child: SoftActionTile(
-                    label: '미소',
-                    emoji: '😊',
-                    color: WSColors.sunny,
-                    onTap: onOpenMind,
-                  ),
-                ),
-                Expanded(
-                  child: SoftActionTile(
-                    label: 'ESG',
-                    emoji: '🌱',
-                    color: WSColors.mint,
-                    onTap: () => _push(context, EsgScreen(store: store)),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            GlassCard(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      const Expanded(
-                        child: Text(
-                          '다음 Wing Coin까지',
-                          style: TextStyle(fontWeight: FontWeight.w800),
-                        ),
-                      ),
-                      Text(
-                        '${store.pendingSteps}/${RewardRules.stepsPerCoin}걸음',
-                        style: const TextStyle(
-                          color: WSColors.primaryDark,
-                          fontWeight: FontWeight.w700,
-                          fontSize: 13,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(99),
-                    child: LinearProgressIndicator(
-                      value: store.pendingProgress,
-                      minHeight: 7,
-                      color: WSColors.primary,
-                      backgroundColor: WSColors.mutedBg,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    '200걸음=1코인 · 잔여 이월 · 일일 한도 ${store.remainingDailyCap}걸음 · 1코인≈${RewardRules.coinWorthKrw}원',
-                    style: const TextStyle(
-                      color: WSColors.muted,
-                      fontSize: 11,
-                      height: 1.35,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                _Metric(
-                  icon: Icons.local_fire_department_rounded,
-                  iconColor: WSColors.cal,
-                  value: '${store.calories}',
-                  label: '칼로리',
-                ),
-                const SizedBox(width: 8),
-                _Metric(
-                  icon: Icons.location_on_rounded,
-                  iconColor: WSColors.dist,
-                  value: store.distanceKm.toStringAsFixed(2),
-                  label: 'GPS 거리 (km)',
-                ),
-                const SizedBox(width: 8),
-                _Metric(
-                  icon: Icons.favorite_rounded,
-                  iconColor: WSColors.hr,
-                  value: '${store.heartRate}',
-                  label: '심박수 (예시)',
-                ),
-              ],
-            ),
-            const SizedBox(height: 10),
-            Row(
-              children: [
-                Expanded(
-                  child: GlassCard(
-                    onTap: onOpenMind,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            const Expanded(
-                              child: Text(
-                                '오늘 기분',
-                                style: TextStyle(
-                                  color: WSColors.muted,
-                                  fontSize: 12,
-                                ),
-                              ),
-                            ),
-                            Icon(
-                              Icons.chevron_right,
-                              size: 18,
-                              color: WSColors.muted.withValues(alpha: 0.8),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 12),
-                        Text(
-                          store.todayMind == null
-                              ? '🫥'
-                              : _emoji(store.todayMind!.emotion),
-                          style: const TextStyle(fontSize: 30),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          store.todayMind == null ? '아직 기록이\n없어요' : '기록됨',
-                          style: const TextStyle(
-                            fontWeight: FontWeight.w700,
-                            height: 1.25,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: GlassCard(
-                    onTap: () => _push(context, EsgScreen(store: store)),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'ESG 임팩트',
-                          style: TextStyle(color: WSColors.muted, fontSize: 12),
-                        ),
-                        const SizedBox(height: 14),
-                        Text.rich(
-                          TextSpan(
-                            children: [
-                              TextSpan(
-                                text: '${store.esgScore}',
-                                style: const TextStyle(
-                                  fontSize: 30,
-                                  fontWeight: FontWeight.w800,
-                                  color: Color(0xFF3CBF8A),
-                                  height: 1,
-                                ),
-                              ),
-                              const TextSpan(
-                                text: ' /100',
-                                style: TextStyle(
-                                  color: WSColors.muted,
-                                  fontSize: 14,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          '탄소 ${store.carbonSavedKg.toStringAsFixed(1)}kg',
-                          style: const TextStyle(
-                            fontSize: 12,
-                            color: WSColors.muted,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 10),
-            Row(
-              children: [
-                Expanded(
-                  child: GlassCard(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          '${store.sleepHours}시간',
-                          style: const TextStyle(
-                            fontSize: 24,
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        const Text(
-                          '어젯밤 수면',
-                          style: TextStyle(color: WSColors.muted),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: GlassCard(
-                    onTap: store.checkAttendance,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            const Icon(
-                              Icons.calendar_month_rounded,
-                              size: 18,
-                              color: WSColors.primary,
-                            ),
-                            const SizedBox(width: 6),
-                            Text(
-                              '${store.streak}일 연속',
-                              style: const TextStyle(
-                                fontSize: 22,
-                                fontWeight: FontWeight.w800,
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 4),
-                        const Text(
-                          '탭하여 출석체크!',
-                          style: TextStyle(
-                            color: WSColors.primaryDark,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 10),
-            GlassCard(
-              onTap: () => _push(
-                context,
-                store.isPremium
-                    ? AiCoachScreen(store: store)
-                    : PremiumScreen(store: store),
-              ),
-              child: Row(
-                children: [
-                  Container(
-                    width: 48,
-                    height: 48,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(16),
-                      color: WSColors.primarySoft,
-                    ),
-                    child: const Center(
-                      child: Icon(
-                        Icons.auto_awesome_rounded,
-                        color: WSColors.primary,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            const Text(
-                              'AI 코치 윙이',
-                              style: TextStyle(fontWeight: FontWeight.w800),
-                            ),
-                            const SizedBox(width: 6),
-                            if (!store.isPremium)
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 6,
-                                  vertical: 2,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: WSColors.sunny,
-                                  borderRadius: BorderRadius.circular(6),
-                                ),
-                                child: const Text(
-                                  'PRO',
-                                  style: TextStyle(
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.w800,
-                                  ),
-                                ),
-                              ),
-                          ],
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          store.isPremium
-                              ? store.wingiMessage
-                              : '응원은 Free · 행동패턴·맞춤 습관 추천은 Premium',
-                          style: const TextStyle(
-                            color: WSColors.muted,
-                            fontSize: 13,
-                            height: 1.35,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 10),
-            GlassCard(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      const Expanded(
-                        child: Text(
-                          '오늘의 미션',
-                          style: TextStyle(
-                            fontWeight: FontWeight.w800,
-                            fontSize: 16,
-                          ),
-                        ),
-                      ),
-                      Text(
-                        '${store.missions.where((m) => m.claimed).length} / ${store.missions.length} 완료',
-                        style: const TextStyle(
-                          color: WSColors.muted,
-                          fontSize: 12,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 10),
-                  Wrap(
-                    spacing: 8,
-                    children: [
-                      for (final m in store.missions)
-                        Container(
-                          width: 42,
-                          height: 42,
-                          alignment: Alignment.center,
-                          decoration: BoxDecoration(
-                            color: m.claimed
-                                ? WSColors.mint.withValues(alpha: 0.45)
-                                : WSColors.secondary,
-                            borderRadius: BorderRadius.circular(14),
-                          ),
-                          child: Text(
-                            m.claimed ? '✓' : m.emoji,
-                            style: const TextStyle(fontSize: 18),
-                          ),
-                        ),
-                    ],
-                  ),
-                  const SizedBox(height: 10),
-                  for (final m in store.missions.take(4))
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 8),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              '${m.emoji}  ${m.title}${m.esgPillar != null ? ' · ESG' : ''}',
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ),
-                          Text(
-                            '${m.progress.clamp(0, m.target)}/${m.target}',
-                            style: const TextStyle(
-                              color: WSColors.muted,
-                              fontSize: 12,
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          FilledButton.tonal(
-                            style: FilledButton.styleFrom(
-                              visualDensity: VisualDensity.compact,
-                              backgroundColor: WSColors.primarySoft,
-                              foregroundColor: WSColors.primaryDark,
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 12,
-                              ),
-                            ),
-                            onPressed: m.ready
-                                ? () => store.claimMission(m.id)
-                                : null,
-                            child: Text(m.claimed ? '완료' : '받기'),
-                          ),
-                        ],
-                      ),
-                    ),
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: TextButton.icon(
-                      onPressed: onOpenBreathing,
-                      icon: const Icon(
-                        Icons.air_rounded,
-                        color: WSColors.primary,
-                      ),
-                      label: const Text(
-                        '1분 심호흡 미션',
-                        style: TextStyle(color: WSColors.primaryDark),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 10),
-            GlassCard(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    '🌿  서비스직 힐링 팁 · ${store.job}',
-                    style: const TextStyle(fontWeight: FontWeight.w800),
-                  ),
-                  const SizedBox(height: 8),
-                  const Text(
-                    '퇴근길엔 오늘 잘한 일 한 가지를 떠올려보세요. 뇌는 기록된 성취를 기억합니다.',
-                    style: TextStyle(color: WSColors.muted, height: 1.45),
-                  ),
-                  const SizedBox(height: 10),
-                  Text(
-                    '객실 ${store.cabinLabel} · ${store.membershipLabel} · ESG ${store.esgScore}',
-                    style: const TextStyle(
-                      fontSize: 12,
-                      color: WSColors.primaryDark,
-                      fontWeight: FontWeight.w700,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                      height: 1.5,
                     ),
                   ),
                 ],
@@ -620,14 +173,60 @@ class HomeScreen extends StatelessWidget {
       ),
     );
   }
+}
 
-  String _emoji(Emotion e) => switch (e) {
-    Emotion.great => '😄',
-    Emotion.good => '🙂',
-    Emotion.okay => '😐',
-    Emotion.hard => '😞',
-    Emotion.exhausted => '😢',
-  };
+class _ActivityTile extends StatelessWidget {
+  const _ActivityTile({
+    super.key,
+    required this.title,
+    required this.icon,
+    required this.color,
+    required this.background,
+    required this.detail,
+    required this.subtitle,
+    required this.onTap,
+  });
+  final String title, detail, subtitle;
+  final IconData icon;
+  final Color color, background;
+  final VoidCallback onTap;
+  @override
+  Widget build(BuildContext context) => GlassCard(
+    color: background,
+    onTap: onTap,
+    padding: const EdgeInsets.all(14),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(icon, color: color, size: 28),
+            const Spacer(),
+            Icon(Icons.chevron_right, color: color, size: 18),
+          ],
+        ),
+        const Spacer(),
+        Text(
+          title,
+          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          detail,
+          style: TextStyle(
+            fontSize: 14,
+            color: color,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          subtitle,
+          style: const TextStyle(fontSize: 11, color: WSColors.muted),
+        ),
+      ],
+    ),
+  );
 }
 
 class _Header extends StatelessWidget {
@@ -679,18 +278,6 @@ class _Header extends StatelessWidget {
             ],
           ),
         ),
-        const SizedBox(width: 8),
-        _Pill(
-          child: Badge(
-            isLabelVisible: true,
-            backgroundColor: WSColors.destructive,
-            label: const Text('1', style: TextStyle(fontSize: 10)),
-            child: Icon(
-              Icons.notifications_none_rounded,
-              color: WSColors.foreground.withValues(alpha: 0.75),
-            ),
-          ),
-        ),
       ],
     );
   }
@@ -723,48 +310,6 @@ class _Pill extends StatelessWidget {
             ],
           ),
           child: child,
-        ),
-      ),
-    );
-  }
-}
-
-class _Metric extends StatelessWidget {
-  const _Metric({
-    required this.icon,
-    required this.iconColor,
-    required this.value,
-    required this.label,
-  });
-
-  final IconData icon;
-  final Color iconColor;
-  final String value;
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    return Expanded(
-      child: GlassCard(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 14),
-        child: Column(
-          children: [
-            Icon(icon, size: 18, color: iconColor),
-            const SizedBox(height: 6),
-            Text(
-              value,
-              style: TextStyle(
-                fontWeight: FontWeight.w800,
-                fontSize: 18,
-                color: iconColor,
-              ),
-            ),
-            const SizedBox(height: 2),
-            Text(
-              label,
-              style: const TextStyle(fontSize: 11, color: WSColors.muted),
-            ),
-          ],
         ),
       ),
     );

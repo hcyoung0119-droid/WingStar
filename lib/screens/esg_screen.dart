@@ -99,9 +99,9 @@ class EsgScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 8),
                   _Line(
-                    '🌱',
-                    '에코 워킹',
-                    '${NumberFormat('#,###').format(store.steps)}걸음 · 탄소 저감 추정',
+                    '♻️',
+                    '플로깅',
+                    '${store.ploggingSessions}회 · 쓰레기 ${NumberFormat('#,###').format(store.litterCollected)}개 수거',
                   ),
                   _Line('🤝', '응원·미소', '사회 액션 ${store.socialActions}회'),
                   _Line(

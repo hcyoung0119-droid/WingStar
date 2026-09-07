@@ -12,6 +12,8 @@ enum CabinClass { economy, premiumEconomy, business, first }
 
 enum Emotion { great, good, okay, hard, exhausted }
 
+enum MindSection { emotion, journal, smile, calendar }
+
 /// Free · Premium · Membership(더 깊은 자기개발)
 enum MembershipTier { free, premium, membership }
 
@@ -280,6 +282,9 @@ class AppStore extends ChangeNotifier {
         'carbonSavedKg': carbonSavedKg,
         'smileCount': smileCount,
         'breathingSessions': breathingSessions,
+        'ploggingSessions': ploggingSessions,
+        'litterCollected': litterCollected,
+        'lastPloggingAt': lastPloggingAt?.toIso8601String(),
         'journalCount': journalCount,
         'mind': mindEntries
             .map(
@@ -358,6 +363,9 @@ class AppStore extends ChangeNotifier {
       sensitivity = d['sensitivity'] as String? ?? 'normal';
       stepEngine.setSensitivity(sensitivity);
       recordLocation = d['recordLocation'] == true;
+      ploggingSessions = d['ploggingSessions'] as int? ?? 0;
+      litterCollected = d['litterCollected'] as int? ?? 0;
+      lastPloggingAt = DateTime.tryParse(d['lastPloggingAt'] as String? ?? '');
       stress = d['stress'] as int? ?? stress;
       ecoActions = d['ecoActions'] as int? ?? ecoActions;
       socialActions = d['socialActions'] as int? ?? socialActions;
@@ -506,6 +514,10 @@ class AppStore extends ChangeNotifier {
   double carbonSavedKg = 0.8;
   int smileCount = 0;
   int breathingSessions = 0;
+  int ploggingSessions = 0;
+  int litterCollected = 0;
+  DateTime? lastPloggingAt;
+  MindSection mindSection = MindSection.emotion;
   int journalCount = 0;
 
   List<BehaviorInsight> behaviorInsights = [];
@@ -945,6 +957,22 @@ class AppStore extends ChangeNotifier {
     notifyListeners();
   }
 
+  void openMind(MindSection section) {
+    mindSection = section;
+    tab = 1;
+    notifyListeners();
+  }
+
+  void recordPlogging(int pieces) {
+    if (pieces < 1 || pieces > 999) return;
+    ploggingSessions += 1;
+    litterCollected += pieces;
+    lastPloggingAt = DateTime.now();
+    ecoActions += 1;
+    showToast('플로깅 기록을 저장했어요');
+    notifyListeners();
+  }
+
   void toggleDarkMode() {
     darkMode = !darkMode;
     notifyListeners();
@@ -1154,7 +1182,7 @@ class AppStore extends ChangeNotifier {
     ];
 
     weeklyDeepReport =
-        '이번 주 마음 지수 $mindCalmScore점 · ESG $esgScore점. '
+        '이번 주 마음 기록 ${mindEntries.length}회 · ESG $esgScore점. '
         '걸음 ${NumberFormat('#,###').format(steps)}, 일기 $journalCount회, 호흡 $breathingSessions회. '
         '추천: 에코 워킹과 감정 기록을 같은 날 묶어 Care Loop를 닫으세요.';
 
