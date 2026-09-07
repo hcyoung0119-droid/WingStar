@@ -4,6 +4,12 @@ import 'package:flutter/foundation.dart';
 enum MeditationStatus { idle, running, paused, completed, ended }
 
 class WalkingMeditation extends ChangeNotifier {
+  static const minMinutes = 1;
+  static const maxMinutes = 120;
+  static const greenMinimumMinutes = 20;
+  static bool acceptsDuration(int minutes, {bool campaign = false}) =>
+      minutes >= (campaign ? greenMinimumMinutes : minMinutes) &&
+      minutes <= maxMinutes;
   WalkingMeditation({Duration Function()? elapsedClock})
     : _elapsedClock = elapsedClock {
     _clock.start();
@@ -63,8 +69,7 @@ class WalkingMeditation extends ChangeNotifier {
     required double totalMeters,
   }) {
     if (active) return;
-    if (![5, 10, 20].contains(courseMinutes) ||
-        campaign && courseMinutes != 20) {
+    if (!acceptsDuration(courseMinutes, campaign: campaign)) {
       throw ArgumentError('Unsupported walking meditation course');
     }
     minutes = courseMinutes;

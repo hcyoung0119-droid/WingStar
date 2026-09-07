@@ -106,7 +106,7 @@ class MeditationScreen extends StatelessWidget {
               '걷기 명상 코스',
               style: TextStyle(fontWeight: FontWeight.w800),
             ),
-            subtitle: Text('5·10·20분 · 음악과 함께 내 속도로'),
+            subtitle: Text('시간을 직접 정하고 · 음악과 함께 내 속도로'),
             trailing: Icon(Icons.chevron_right),
           ),
         ),

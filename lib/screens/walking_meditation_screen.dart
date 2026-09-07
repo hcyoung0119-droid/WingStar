@@ -3,6 +3,7 @@ import 'package:wingstar/state/app_store.dart';
 import 'package:wingstar/services/walking_meditation.dart';
 import 'package:wingstar/theme/app_theme.dart';
 import 'package:wingstar/widgets/meditation_music.dart';
+import 'package:wingstar/widgets/meditation_duration_dial.dart';
 
 class WalkingMeditationScreen extends StatefulWidget {
   const WalkingMeditationScreen({
@@ -19,11 +20,17 @@ class WalkingMeditationScreen extends StatefulWidget {
 
 class _WalkingMeditationScreenState extends State<WalkingMeditationScreen> {
   late int selectedMinutes;
-  bool choosingNewCourse = false;
+  final scrollController = ScrollController();
   @override
   void initState() {
     super.initState();
     selectedMinutes = widget.greenWalk ? 20 : 10;
+  }
+
+  @override
+  void dispose() {
+    scrollController.dispose();
+    super.dispose();
   }
 
   String clock(int seconds) =>
@@ -35,8 +42,7 @@ class _WalkingMeditationScreenState extends State<WalkingMeditationScreen> {
       final store = widget.store, session = store.meditation;
       final active = session.active;
       final running = session.status == MeditationStatus.running;
-      final completed =
-          session.status == MeditationStatus.completed && !choosingNewCourse;
+      final completed = session.status == MeditationStatus.completed;
       final showSession =
           active || completed || session.status == MeditationStatus.ended;
       final green = active ? session.greenWalk : widget.greenWalk;
@@ -47,6 +53,7 @@ class _WalkingMeditationScreenState extends State<WalkingMeditationScreen> {
           child: SafeArea(
             top: false,
             child: ListView(
+              controller: scrollController,
               padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
               children: [
                 Text(
@@ -60,7 +67,9 @@ class _WalkingMeditationScreenState extends State<WalkingMeditationScreen> {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  green ? '20분, 나와 지구를 위한 걷기' : '오늘의 걷기 명상',
+                  green
+                      ? '${active ? session.minutes : selectedMinutes}분, 나와 지구를 위한 걷기'
+                      : '오늘의 걷기 명상',
                   style: const TextStyle(
                     fontSize: 24,
                     fontWeight: FontWeight.w800,
@@ -83,65 +92,74 @@ class _WalkingMeditationScreenState extends State<WalkingMeditationScreen> {
                 GlassCard(
                   child: Column(
                     children: [
+                      if (completed)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: Text(
+                            '${session.minutes}분 코스 완료',
+                            style: const TextStyle(
+                              color: WSColors.success,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ),
                       if (!active)
-                        SegmentedButton<int>(
-                          segments: const [
-                            ButtonSegment(value: 5, label: Text('5분')),
-                            ButtonSegment(value: 10, label: Text('10분')),
-                            ButtonSegment(value: 20, label: Text('20분')),
-                          ],
-                          selected: {selectedMinutes},
-                          onSelectionChanged: green || store.preparingMeditation
-                              ? null
-                              : (v) => setState(() {
-                                  selectedMinutes = v.first;
-                                  choosingNewCourse = true;
-                                }),
+                        MeditationDurationDial(
+                          minutes: selectedMinutes,
+                          minimum: green
+                              ? WalkingMeditation.greenMinimumMinutes
+                              : WalkingMeditation.minMinutes,
+                          maximum: WalkingMeditation.maxMinutes,
+                          enabled: !store.preparingMeditation,
+                          onChanged: (value) =>
+                              setState(() => selectedMinutes = value),
                         ),
-                      const SizedBox(height: 20),
-                      SizedBox(
-                        width: 190,
-                        height: 190,
-                        child: Stack(
-                          alignment: Alignment.center,
-                          children: [
-                            SizedBox.expand(
-                              child: CircularProgressIndicator(
-                                value: active || completed
-                                    ? session.progress
-                                    : 0,
-                                strokeWidth: 9,
-                                backgroundColor: WSColors.primarySoft,
+                      if (active)
+                        SizedBox(
+                          width: 190,
+                          height: 190,
+                          child: Stack(
+                            alignment: Alignment.center,
+                            children: [
+                              SizedBox.expand(
+                                child: CircularProgressIndicator(
+                                  value: active || completed
+                                      ? session.progress
+                                      : 0,
+                                  strokeWidth: 9,
+                                  backgroundColor: WSColors.primarySoft,
+                                ),
                               ),
-                            ),
-                            Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text(
-                                  active || completed
-                                      ? clock(session.remainingSeconds)
-                                      : clock(selectedMinutes * 60),
-                                  style: const TextStyle(
-                                    fontSize: 42,
-                                    fontWeight: FontWeight.w800,
+                              Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    active || completed
+                                        ? clock(session.remainingSeconds)
+                                        : clock(selectedMinutes * 60),
+                                    style: const TextStyle(
+                                      fontSize: 42,
+                                      fontWeight: FontWeight.w800,
+                                    ),
                                   ),
-                                ),
-                                Text(
-                                  running
-                                      ? '걷고, 숨 쉬는 중'
-                                      : session.status ==
-                                            MeditationStatus.paused
-                                      ? '일시정지'
-                                      : completed
-                                      ? '코스 완료'
-                                      : '나를 위한 시간',
-                                  style: const TextStyle(color: WSColors.muted),
-                                ),
-                              ],
-                            ),
-                          ],
+                                  Text(
+                                    running
+                                        ? '걷고, 숨 쉬는 중'
+                                        : session.status ==
+                                              MeditationStatus.paused
+                                        ? '일시정지'
+                                        : completed
+                                        ? '코스 완료'
+                                        : '나를 위한 시간',
+                                    style: const TextStyle(
+                                      color: WSColors.muted,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
                         ),
-                      ),
                       const SizedBox(height: 20),
                       if (active)
                         Text(
@@ -176,12 +194,20 @@ class _WalkingMeditationScreenState extends State<WalkingMeditationScreen> {
                               ? store.pauseMeditation
                               : session.status == MeditationStatus.paused
                               ? store.resumeMeditation
-                              : () {
-                                  setState(() => choosingNewCourse = false);
-                                  store.startWalkingMeditation(
+                              : () async {
+                                  await store.startWalkingMeditation(
                                     selectedMinutes,
                                     greenWalk: widget.greenWalk,
                                   );
+                                  if (mounted && scrollController.hasClients) {
+                                    await scrollController.animateTo(
+                                      0,
+                                      duration: const Duration(
+                                        milliseconds: 250,
+                                      ),
+                                      curve: Curves.easeOut,
+                                    );
+                                  }
                                 },
                           icon: Icon(
                             running

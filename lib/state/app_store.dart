@@ -7,6 +7,7 @@ import '../services/location_engine.dart';
 import '../services/walking_meditation.dart';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart' show StringCharacters;
 import 'package:intl/intl.dart';
 
 enum CabinClass { economy, premiumEconomy, business, first }
@@ -249,6 +250,7 @@ class AppStore extends ChangeNotifier {
   int _spokenPhase = -1;
   Timer? _walkTimer;
   Timer? _saveTimer;
+  Timer? _toastTimer;
   final Stopwatch _walkClock = Stopwatch();
   bool _disposed = false;
   int _accountedSteps = 0;
@@ -274,6 +276,7 @@ class AppStore extends ChangeNotifier {
   void dispose() {
     if (_persistsDeviceState) _saveDeviceState();
     _saveTimer?.cancel();
+    _toastTimer?.cancel();
     _disposed = true;
     _walkTimer?.cancel();
     _walkClock.stop();
@@ -289,13 +292,17 @@ class AppStore extends ChangeNotifier {
     super.dispose();
   }
 
-  void _saveDeviceState() {
-    (_stateWriter ?? bridge.saveDeviceState)(
+  bool _saveDeviceState() {
+    return (_stateWriter ?? bridge.saveDeviceState)(
       jsonEncode({
         'date': DateTime.now().toIso8601String().substring(0, 10),
         'onboarded': onboarded,
         'name': name,
         'job': job,
+        'profileBio': profileBio,
+        'profilePhoto': profilePhoto,
+        'profileColor': profileColor,
+        'profileBadge': profileBadge,
         'darkMode': darkMode,
         'steps': steps,
         'stepGoal': stepGoal,
@@ -380,6 +387,16 @@ class AppStore extends ChangeNotifier {
       onboarded = d['onboarded'] == true;
       name = d['name'] as String? ?? '';
       job = d['job'] as String? ?? job;
+      profileBio = d['profileBio'] as String? ?? '';
+      profilePhoto = validProfilePhoto(d['profilePhoto'] as String? ?? '')
+          ? (d['profilePhoto'] as String? ?? '')
+          : '';
+      profileColor = profileColors.contains(d['profileColor'])
+          ? d['profileColor'] as String
+          : 'sky';
+      profileBadge = profileBadges.contains(d['profileBadge'])
+          ? d['profileBadge'] as String
+          : 'leaf';
       darkMode = d['darkMode'] == true;
       stepGoal = d['stepGoal'] as int? ?? stepGoal;
       if (stepGoal < 1) stepGoal = 8000;
@@ -521,6 +538,63 @@ class AppStore extends ChangeNotifier {
   bool onboarded = false;
   String name = '';
   String job = '항공승무원';
+  String profileBio = '';
+  String profilePhoto = '';
+  String profileColor = 'sky';
+  String profileBadge = 'leaf';
+  static const profileColors = ['sky', 'mint', 'lavender', 'sunset'];
+  static const profileBadges = ['leaf', 'sparkle', 'walk', 'heart'];
+  static bool validProfilePhoto(String value) =>
+      value.isEmpty ||
+      (value.length <= 600000 &&
+          RegExp(
+            r'^data:image/jpeg;base64,[A-Za-z0-9+/]+={0,2}$',
+          ).hasMatch(value));
+
+  bool updateProfile({
+    required String displayName,
+    required String occupation,
+    required String bio,
+    required String photo,
+    required String color,
+    required String badge,
+  }) {
+    if (displayName.trim().isEmpty ||
+        displayName.characters.length > 24 ||
+        occupation.characters.length > 30 ||
+        bio.characters.length > 80 ||
+        !validProfilePhoto(photo) ||
+        !profileColors.contains(color) ||
+        !profileBadges.contains(badge)) {
+      return false;
+    }
+    final previous = (
+      name,
+      job,
+      profileBio,
+      profilePhoto,
+      profileColor,
+      profileBadge,
+    );
+    name = displayName.trim();
+    job = occupation.trim();
+    profileBio = bio.trim();
+    profilePhoto = photo;
+    profileColor = color;
+    profileBadge = badge;
+    if (_persistsDeviceState && !_saveDeviceState()) {
+      name = previous.$1;
+      job = previous.$2;
+      profileBio = previous.$3;
+      profilePhoto = previous.$4;
+      profileColor = previous.$5;
+      profileBadge = previous.$6;
+      return false;
+    }
+    notifyListeners();
+    return true;
+  }
+
   bool darkMode = false;
 
   int tab = 0;
@@ -982,9 +1056,11 @@ class AppStore extends ChangeNotifier {
   }
 
   void showToast(String msg) {
+    if (_disposed) return;
+    _toastTimer?.cancel();
     toast = msg;
     notifyListeners();
-    Future<void>.delayed(const Duration(milliseconds: 2200), () {
+    _toastTimer = Timer(const Duration(milliseconds: 2200), () {
       toast = null;
       notifyListeners();
     });
@@ -1032,6 +1108,12 @@ class AppStore extends ChangeNotifier {
     bool greenWalk = false,
   }) async {
     if (preparingMeditation || meditation.active || syncing || _disposed) {
+      return;
+    }
+    if (!WalkingMeditation.acceptsDuration(minutes, campaign: greenWalk)) {
+      showToast(
+        greenWalk ? 'GREEN WALK는 20–120분으로 설정해 주세요.' : '1–120분으로 설정해 주세요.',
+      );
       return;
     }
     preparingMeditation = true;

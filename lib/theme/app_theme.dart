@@ -83,7 +83,11 @@ class AppTheme {
           backgroundColor: WSColors.primary,
           foregroundColor: Colors.white,
           elevation: 0,
-          textStyle: const TextStyle(fontFamily: 'NotoSansKR', fontWeight: FontWeight.w700, fontSize: 15),
+          textStyle: const TextStyle(
+            fontFamily: 'NotoSansKR',
+            fontWeight: FontWeight.w700,
+            fontSize: 15,
+          ),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(999),
           ),
@@ -307,6 +311,7 @@ class GlassCard extends StatelessWidget {
     this.onTap,
     this.radius = 20,
     this.color,
+    this.gradient,
   });
 
   final Widget child;
@@ -314,6 +319,7 @@ class GlassCard extends StatelessWidget {
   final VoidCallback? onTap;
   final double radius;
   final Color? color;
+  final Gradient? gradient;
 
   @override
   Widget build(BuildContext context) {
@@ -322,6 +328,7 @@ class GlassCard extends StatelessWidget {
       padding: padding,
       decoration: BoxDecoration(
         color: color ?? (dark ? const Color(0xCC1B2A44) : WSColors.card),
+        gradient: gradient,
         borderRadius: BorderRadius.circular(radius),
         border: Border.all(
           color: dark ? Colors.white12 : WSColors.border.withValues(alpha: 0.7),

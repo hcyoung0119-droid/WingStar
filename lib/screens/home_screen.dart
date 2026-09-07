@@ -34,12 +34,22 @@ class HomeScreen extends StatelessWidget {
             _Header(store: store),
             const SizedBox(height: 20),
             GlassCard(
-              color: WSColors.primarySoft,
+              gradient: store.darkMode
+                  ? null
+                  : const LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [
+                        Color(0xFFDDEFFC),
+                        Color(0xFFE3F4EF),
+                        Color(0xFFF2EDFC),
+                      ],
+                    ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text(
-                    'WALK FOR ME',
+                    '◌  WALK FOR ME',
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w800,
@@ -68,7 +78,7 @@ class HomeScreen extends StatelessWidget {
                     label: Text(
                       store.meditation.active
                           ? '진행 중인 코스 이어서 보기'
-                          : '5·10·20분 코스 고르기',
+                          : '내 시간으로 걷기 명상',
                     ),
                   ),
                   const SizedBox(height: 10),

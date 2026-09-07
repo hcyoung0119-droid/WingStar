@@ -2,6 +2,11 @@ import 'dart:async';
 import 'dart:js_interop';
 import 'package:sensors_plus/sensors_plus.dart';
 
+@JS('wingstarProfile.pickPhoto')
+external JSPromise<JSString> _pickProfilePhoto();
+Future<String> pickProfilePhoto() =>
+    _pickProfilePhoto().toDart.then((v) => v.toDart);
+
 @JS('wingstar.motionSupported')
 external JSBoolean get _motionSupported;
 @JS('wingstar.requestMotionAccess')

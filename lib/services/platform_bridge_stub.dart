@@ -8,6 +8,7 @@ Future<String> shareAppLink() async => 'unavailable';
 Future<String> copyAppLink() async => 'unavailable';
 String loadDeviceState() => '';
 bool saveDeviceState(String value) => false;
+Future<String> pickProfilePhoto() async => '{"error":"사진 추가는 웹앱에서 이용할 수 있어요."}';
 String musicState() =>
     '{"tracks":[],"status":"unavailable","enabled":false,"volume":0.45,"notice":"음악 기능은 아이폰 웹앱에서 이용할 수 있어요."}';
 Future<String> playMusic() async => 'unavailable';

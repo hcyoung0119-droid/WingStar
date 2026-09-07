@@ -1,5 +1,7 @@
 import 'package:flutter/foundation.dart';
 import '../widgets/app_sharing_card.dart';
+import '../widgets/profile_card.dart';
+import 'profile_editor_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:wingstar/screens/ai_coach_screen.dart';
 import 'package:wingstar/screens/esg_screen.dart';
@@ -31,45 +33,28 @@ class MyScreen extends StatelessWidget {
               ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800),
             ),
             const SizedBox(height: 12),
-            GlassCard(
-              child: Row(
+            ProfileCard(
+              name: store.name,
+              job: store.job,
+              bio: store.profileBio,
+              photo: store.profilePhoto,
+              color: store.profileColor,
+              badge: store.profileBadge,
+              onEdit: () => _push(context, ProfileEditorScreen(store: store)),
+              footer: Wrap(
+                spacing: 12,
+                runSpacing: 8,
                 children: [
-                  CircleAvatar(
-                    radius: 28,
-                    backgroundColor: WSColors.primary,
-                    child: Text(
-                      store.name.isEmpty ? 'W' : store.name.substring(0, 1),
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w800,
-                        fontSize: 20,
-                      ),
-                    ),
+                  Text(
+                    '${store.cabinLabel} · ${store.membershipLabel}',
+                    style: const TextStyle(color: Colors.white70, fontSize: 12),
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          store.name,
-                          style: const TextStyle(
-                            fontWeight: FontWeight.w800,
-                            fontSize: 18,
-                          ),
-                        ),
-                        Text(
-                          '${store.job} · ${store.cabinLabel} · ${store.membershipLabel}',
-                          style: const TextStyle(color: WSColors.muted),
-                        ),
-                        Text(
-                          '윙코인 ${store.wsc}',
-                          style: const TextStyle(
-                            color: WSColors.primary,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ],
+                  Text(
+                    '윙코인 ${store.wsc}',
+                    style: const TextStyle(
+                      color: Color(0xFFFFE3A3),
+                      fontWeight: FontWeight.w800,
+                      fontSize: 12,
                     ),
                   ),
                 ],

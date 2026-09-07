@@ -158,13 +158,13 @@ class GreenRewardPreview extends StatelessWidget {
         const ListTile(
           contentPadding: EdgeInsets.zero,
           leading: Text('♻️', style: TextStyle(fontSize: 28)),
-          title: Text('폐현수막 필통'),
+          title: Text('업사이클링 필통'),
           trailing: Text('1,000P'),
         ),
         const ListTile(
           contentPadding: EdgeInsets.zero,
           leading: Text('👖', style: TextStyle(fontSize: 28)),
-          title: Text('폐청바지 파우치'),
+          title: Text('업사이클링 파우치'),
           trailing: Text('1,500P'),
         ),
         const SizedBox(height: 8),

@@ -1,4 +1,6 @@
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:wingstar/services/walking_meditation.dart';
 import 'package:wingstar/state/app_store.dart';
@@ -7,8 +9,8 @@ import 'package:wingstar/theme/app_theme.dart';
 import 'walking_integration_test.dart' show TestStepEngine, TestLocationEngine;
 
 void main() {
-  test('5/10/20 minute courses complete once at the deadline', () {
-    for (final minutes in [5, 10, 20]) {
+  test('Custom minute courses complete once at their chosen deadline', () {
+    for (final minutes in [1, 7, 17, 43, 120]) {
       var now = Duration.zero;
       final session = WalkingMeditation(elapsedClock: () => now);
       session.start(
@@ -112,14 +114,21 @@ void main() {
           home: WalkingMeditationScreen(store: store),
         ),
       );
-      await tester.tap(find.text('5분'));
+      final dial = tester.getRect(find.byKey(const Key('duration-dial')));
+      final angle = 17 / 120 * 2 * math.pi - math.pi / 2;
+      await tester.tapAt(
+        dial.center +
+            Offset(math.cos(angle), math.sin(angle)) * (dial.width / 2 - 18),
+      );
       await tester.pump();
-      expect(find.text('05:00'), findsOneWidget);
+      expect(find.text('17분'), findsOneWidget);
       await tester.ensureVisible(find.text('걷기 명상 시작'));
       await tester.tap(find.text('걷기 명상 시작'));
       await tester.pump();
-      expect(store.meditation.minutes, 5);
+      expect(store.meditation.minutes, 17);
       expect(store.meditation.status, MeditationStatus.running);
+      await tester.pump(const Duration(milliseconds: 300));
+      await tester.ensureVisible(find.text('일시정지').last);
       await tester.tap(find.text('일시정지').last);
       await tester.pump();
       expect(store.meditation.status, MeditationStatus.paused);
@@ -137,4 +146,52 @@ void main() {
       store.dispose();
     },
   );
+
+  testWidgets(
+    'Time wheel selects arbitrary minutes and Green Walk keeps its minimum',
+    (tester) async {
+      final store = AppStore(
+        stepEngine: TestStepEngine(),
+        locationEngine: TestLocationEngine(),
+      );
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.light(),
+          home: WalkingMeditationScreen(store: store, greenWalk: true),
+        ),
+      );
+      await tester.tap(find.byKey(const Key('duration-value')));
+      await tester.pumpAndSettle();
+      final wheel = tester.widget<CupertinoPicker>(
+        find.byKey(const Key('duration-wheel')),
+      );
+      wheel.scrollController!.jumpToItem(17);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('설정'));
+      await tester.pumpAndSettle();
+      expect(find.text('37분'), findsOneWidget);
+      await tester.ensureVisible(find.text('걷기 명상 시작'));
+      await tester.tap(find.text('걷기 명상 시작'));
+      await tester.pump();
+      expect(store.meditation.minutes, 37);
+      expect(store.meditation.greenWalk, true);
+      await tester.pumpWidget(const SizedBox());
+      store.dispose();
+    },
+  );
+
+  test('Invalid durations never start sensors or create a session', () async {
+    final store = AppStore(
+      stepEngine: TestStepEngine(),
+      locationEngine: TestLocationEngine(),
+    );
+    for (final minutes in [0, -5, 121]) {
+      await store.startWalkingMeditation(minutes);
+      expect(store.walking, false);
+      expect(store.meditation.status, MeditationStatus.idle);
+    }
+    await store.startWalkingMeditation(19, greenWalk: true);
+    expect(store.walking, false);
+    store.dispose();
+  });
 }

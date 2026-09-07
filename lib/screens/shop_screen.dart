@@ -133,7 +133,7 @@ class ShopScreen extends StatelessWidget {
             ),
             const SizedBox(height: 14),
             const Text(
-              'ESG · 임팩트 교환',
+              'ESG 그린포인트 샵',
               style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15),
             ),
             const SizedBox(height: 8),
@@ -239,7 +239,7 @@ class ShopScreen extends StatelessWidget {
             ),
             const SizedBox(height: 12),
             const Text(
-              '* 데모 버전 — 쿠폰은 가상으로 발급됩니다 · ESG 교환도 동일',
+              '상품과 포인트 교환은 준비 중이며, 아직 쿠폰이 발급되지 않아요.',
               textAlign: TextAlign.center,
               style: TextStyle(fontSize: 12, color: WSColors.muted),
             ),
