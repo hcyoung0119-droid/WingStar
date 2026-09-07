@@ -138,7 +138,13 @@ class ShopScreen extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             SizedBox(
-              height: 128,
+              height:
+                  184 +
+                  (MediaQuery.textScalerOf(context).scale(14) - 14).clamp(
+                        0,
+                        28,
+                      ) *
+                      6,
               child: ListView(
                 scrollDirection: Axis.horizontal,
                 children: [
@@ -146,7 +152,7 @@ class ShopScreen extends StatelessWidget {
                     Padding(
                       padding: const EdgeInsets.only(right: 8),
                       child: SizedBox(
-                        width: 160,
+                        width: 210,
                         child: GlassCard(
                           onTap: () => store.buyItem(item),
                           child: Column(
@@ -154,20 +160,21 @@ class ShopScreen extends StatelessWidget {
                             children: [
                               Text(
                                 item.emoji,
-                                style: const TextStyle(fontSize: 24),
+                                style: const TextStyle(fontSize: 30),
                               ),
                               const Spacer(),
                               Text(
                                 item.title,
                                 style: const TextStyle(
                                   fontWeight: FontWeight.w800,
-                                  fontSize: 13,
+                                  fontSize: 14,
                                   height: 1.25,
                                 ),
                               ),
-                              Text(
-                                NumberFormat('#,###').format(item.price),
-                                style: const TextStyle(
+                              const SizedBox(height: 8),
+                              const Text(
+                                '교환 준비 중',
+                                style: TextStyle(
                                   color: Color(0xFF2F9E44),
                                   fontWeight: FontWeight.w800,
                                 ),
