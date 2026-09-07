@@ -35,9 +35,15 @@ class WalkingPanel extends StatelessWidget {
           children: [
             if (engine.status == StepEngineStatus.calibrating) ...[
               const SizedBox(height: 8),
-              LinearProgressIndicator(value: engine.calibrationProgress),
+              LinearProgressIndicator(
+                value: engine.usesIosPedometer
+                    ? null
+                    : engine.calibrationProgress,
+              ),
             ],
-            if (store.walking && store.isTestSession) ...[
+            if (store.walking &&
+                store.isTestSession &&
+                !engine.usesIosPedometer) ...[
               const SizedBox(height: 8),
               Text(
                 '테스트 ${store.testSteps}걸음 · 활동·보상 제외',
@@ -56,21 +62,30 @@ class WalkingPanel extends StatelessWidget {
                 child: const Text('센서 다시 보정'),
               ),
             const SizedBox(height: 8),
-            DropdownButtonFormField<String>(
-              initialValue: store.sensitivity,
-              decoration: const InputDecoration(
-                labelText: '걸음 감지 민감도',
-                isDense: true,
+            if (engine.usesIosPedometer)
+              TextButton.icon(
+                onPressed: store.walking && !store.syncing
+                    ? store.retryCalibration
+                    : null,
+                icon: const Icon(Icons.sync),
+                label: const Text('아이폰 걸음 기록 다시 연결'),
+              )
+            else
+              DropdownButtonFormField<String>(
+                initialValue: store.sensitivity,
+                decoration: const InputDecoration(
+                  labelText: '걸음 감지 민감도',
+                  isDense: true,
+                ),
+                items: const [
+                  DropdownMenuItem(value: 'low', child: Text('낮음')),
+                  DropdownMenuItem(value: 'normal', child: Text('보통')),
+                  DropdownMenuItem(value: 'high', child: Text('높음')),
+                ],
+                onChanged: (value) {
+                  if (value != null) store.setSensitivity(value);
+                },
               ),
-              items: const [
-                DropdownMenuItem(value: 'low', child: Text('낮음')),
-                DropdownMenuItem(value: 'normal', child: Text('보통')),
-                DropdownMenuItem(value: 'high', child: Text('높음')),
-              ],
-              onChanged: (value) {
-                if (value != null) store.setSensitivity(value);
-              },
-            ),
             SwitchListTile.adaptive(
               contentPadding: EdgeInsets.zero,
               title: const Text('GPS 거리 함께 기록', style: TextStyle(fontSize: 13)),
@@ -87,6 +102,11 @@ class WalkingPanel extends StatelessWidget {
             if (kIsWeb)
               const Text(
                 '아이폰은 동작 권한을 허용하고 앱 화면을 켜둔 동안 측정해요. 건강 앱 걸음 수는 가져오지 않습니다.',
+                style: TextStyle(fontSize: 12, color: WSColors.muted),
+              ),
+            if (engine.usesIosPedometer)
+              const Text(
+                '걸음수는 동작 및 피트니스 권한으로 기록해요. GPS 거리 기록은 산책 중에만 사용하며, 종료하면 멈춥니다.',
                 style: TextStyle(fontSize: 12, color: WSColors.muted),
               ),
             const Text(

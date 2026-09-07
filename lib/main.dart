@@ -9,6 +9,7 @@ import 'package:wingstar/screens/records_screen.dart';
 import 'package:wingstar/screens/shop_screen.dart';
 import 'package:wingstar/screens/splash_screen.dart';
 import 'package:wingstar/state/app_store.dart';
+import 'package:wingstar/services/ios_device_state.dart';
 import 'package:wingstar/theme/app_theme.dart';
 import 'package:wingstar/widgets/app_viewport.dart';
 import 'package:wingstar/widgets/breathing_sheet.dart';
@@ -34,12 +35,29 @@ Future<void> main() async {
       // Windows 등에서 미지원일 수 있음
     }
   }
-  runApp(const WingStarApp());
+  IosDeviceState? deviceState;
+  var storageFailed = false;
+  try {
+    deviceState = await IosDeviceState.open();
+  } catch (_) {
+    storageFailed = true;
+  }
+  final saved = deviceState;
+  final store = saved == null
+      ? null
+      : AppStore(
+          loadDeviceState: () => saved.value,
+          saveDeviceState: saved.save,
+        );
+  saved?.onWriteError = () =>
+      store?.showToast('기기에 기록을 저장하지 못했어요. 저장 공간을 확인해 주세요.');
+  runApp(WingStarApp(store: store, storageFailed: storageFailed));
 }
 
 class WingStarApp extends StatefulWidget {
-  const WingStarApp({super.key, this.store});
+  const WingStarApp({super.key, this.store, this.storageFailed = false});
   final AppStore? store;
+  final bool storageFailed;
 
   @override
   State<WingStarApp> createState() => _WingStarAppState();
@@ -53,6 +71,14 @@ class _WingStarAppState extends State<WingStarApp> {
   void initState() {
     super.initState();
     store.addListener(_onStore);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      if (widget.storageFailed) {
+        store.showToast('저장된 기록을 열지 못했어요. 앱을 완전히 닫고 다시 열어 주세요.');
+      } else {
+        store.restoreWalkingSession();
+      }
+    });
     Future<void>.delayed(const Duration(milliseconds: 1800), () {
       if (mounted) setState(() => splashDone = true);
     });

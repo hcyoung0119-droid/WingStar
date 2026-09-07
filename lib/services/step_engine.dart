@@ -4,6 +4,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
 import 'package:sensors_plus/sensors_plus.dart';
+import 'ios_pedometer.dart';
 
 enum StepEngineStatus {
   idle,
@@ -14,6 +15,21 @@ enum StepEngineStatus {
 }
 
 class StepEngine extends ChangeNotifier {
+  StepEngine({IosPedometer? iosPedometer})
+    : _ios =
+          iosPedometer ??
+          (!kIsWeb && defaultTargetPlatform == TargetPlatform.iOS
+              ? IosPedometer()
+              : null) {
+    _ios?.onSnapshot = _onNativeSnapshot;
+    _ios?.onError = _onNativeError;
+  }
+
+  final IosPedometer? _ios;
+  bool get usesIosPedometer => _ios != null;
+  DateTime? get sessionStartedAt => _ios?.startedAt;
+  String? nativeDay;
+  int? _nativePeriod;
   StreamSubscription<AccelerometerEvent>? _subscription;
   Timer? _calibrationWatchdog;
 
@@ -60,6 +76,11 @@ class StepEngine extends ChangeNotifier {
     final webPermission = kIsWeb ? bridge.requestMotionAccess() : null;
     await stop(resetStatusOnly: true);
     if (_disposed) return;
+
+    if (_ios != null) {
+      await _startNative();
+      return;
+    }
 
     steps = 0;
     currentMagnitude = 0;
@@ -112,6 +133,62 @@ class StepEngine extends ChangeNotifier {
     } catch (_) {
       _markUnavailable('이 환경에서는 가속도 센서를 시작할 수 없습니다.');
     }
+  }
+
+  Future<void> _startNative({DateTime? from}) async {
+    steps = 0;
+    nativeDay = null;
+    _nativePeriod = null;
+    status = StepEngineStatus.calibrating;
+    statusMessage = '아이폰의 걸음 기록을 연결하고 있어요.';
+    _safeNotify();
+    try {
+      await _ios!.start(from: from, requestPermission: from == null);
+    } catch (error) {
+      if (!_disposed) _onNativeError(error);
+    }
+  }
+
+  /// Used only for a previously saved, user-started walk. Never prompts.
+  Future<void> restoreSession(DateTime from) async {
+    if (_ios == null || _disposed) return;
+    await _startNative(from: from);
+  }
+
+  Future<void> reconcile() async {
+    if (_ios == null || _disposed) return;
+    try {
+      await _ios.refresh();
+    } catch (error) {
+      if (!_disposed) _onNativeError(error);
+    }
+  }
+
+  void _onNativeSnapshot(Map<String, dynamic> value) {
+    if (_disposed) return;
+    final count = value['steps'];
+    final day = value['day'];
+    final period = value['periodStartMs'];
+    if (count is! int || count < 0 || day is! String || period is! int) return;
+    // Late live updates and a foreground history query may overlap.
+    if (_nativePeriod != null && period < _nativePeriod!) return;
+    if (period != _nativePeriod) steps = 0;
+    _nativePeriod = period;
+    nativeDay = day;
+    steps = math.max(steps, count);
+    calibrationProgress = 1;
+    status = StepEngineStatus.running;
+    statusMessage = '아이폰 걸음 기록 연결됨 · 화면을 잠근 동안의 걸음도 반영해요.';
+    _safeNotify();
+  }
+
+  void _onNativeError(Object error) {
+    final message = error.toString();
+    status = StepEngineStatus.unavailable;
+    statusMessage = message.contains('permission')
+        ? '아이폰 설정 → 개인정보 보호 및 보안 → 동작 및 피트니스에서 WingStar를 허용해 주세요.'
+        : '아이폰 걸음 기록을 읽지 못했어요. 실제 아이폰에서 다시 연결해 주세요.';
+    _safeNotify();
   }
 
   void _onAccelerometer(AccelerometerEvent event) {
@@ -262,6 +339,7 @@ class StepEngine extends ChangeNotifier {
   Future<void> retryCalibration() => start();
 
   Future<void> stop({bool resetStatusOnly = false}) async {
+    await _ios?.stop();
     _calibrationWatchdog?.cancel();
     _calibrationWatchdog = null;
     await _subscription?.cancel();
@@ -314,6 +392,7 @@ class StepEngine extends ChangeNotifier {
   @override
   void dispose() {
     _disposed = true;
+    if (_ios != null) unawaited(_ios.stop());
     _calibrationWatchdog?.cancel();
     _subscription?.cancel();
     super.dispose();

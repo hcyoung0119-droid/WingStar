@@ -18,7 +18,12 @@ class LocationEngine extends ChangeNotifier {
   double distanceMeters = 0;
   String message = '거리 기록 대기 중';
 
-  Future<void> start() async {
+  Future<void> start() => _start(requestPermission: true);
+
+  /// Restore an existing walk without presenting a new permission request.
+  Future<void> resumeAuthorized() => _start(requestPermission: false);
+
+  Future<void> _start({required bool requestPermission}) async {
     await stop(resetStatusOnly: true);
     if (_disposed) return;
     distanceMeters = 0;
@@ -40,7 +45,7 @@ class LocationEngine extends ChangeNotifier {
       if (!_browserPermissions) {
         var permission = await Geolocator.checkPermission();
         if (_disposed) return;
-        if (permission == LocationPermission.denied) {
+        if (permission == LocationPermission.denied && requestPermission) {
           permission = await Geolocator.requestPermission();
           if (_disposed) return;
         }
@@ -53,10 +58,20 @@ class LocationEngine extends ChangeNotifier {
         }
       }
 
-      const locationSettings = LocationSettings(
-        accuracy: LocationAccuracy.high,
-        distanceFilter: 5,
-      );
+      final locationSettings =
+          !kIsWeb && defaultTargetPlatform == TargetPlatform.iOS
+          ? AppleSettings(
+              accuracy: LocationAccuracy.high,
+              distanceFilter: 5,
+              activityType: ActivityType.fitness,
+              pauseLocationUpdatesAutomatically: false,
+              allowBackgroundLocationUpdates: true,
+              showBackgroundLocationIndicator: true,
+            )
+          : const LocationSettings(
+              accuracy: LocationAccuracy.high,
+              distanceFilter: 5,
+            );
 
       status = LocationStatus.running;
       message = 'GPS 연결 중';
@@ -73,7 +88,9 @@ class LocationEngine extends ChangeNotifier {
                   ? LocationStatus.permissionDenied
                   : LocationStatus.error;
               message = denied
-                  ? '위치 권한이 꺼져 있어요. Safari의 이 웹사이트 설정에서 위치를 허용해 주세요.'
+                  ? (_browserPermissions
+                        ? '위치 권한이 꺼져 있어요. Safari의 이 웹사이트 설정에서 위치를 허용해 주세요.'
+                        : '위치 권한이 꺼져 있어요. 기기 설정에서 WingStar의 위치를 허용해 주세요.')
                   : '위치 데이터를 읽는 중 오류가 발생했습니다.';
               _safeNotify();
             },
