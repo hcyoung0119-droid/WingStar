@@ -231,6 +231,13 @@ class HomeScreen extends StatelessWidget {
                 ],
               ),
             ),
+            TextButton(
+              onPressed: () => store.social.action('privacy'),
+              child: const Text(
+                '개인정보 안내',
+                style: TextStyle(fontSize: 12, color: WSColors.muted),
+              ),
+            ),
           ],
         ),
       ),

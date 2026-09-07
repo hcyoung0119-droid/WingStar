@@ -1,5 +1,15 @@
 import 'package:sensors_plus/sensors_plus.dart';
 
+String socialState() =>
+    '{"configured":false,"authenticated":false,"friends":[],"incoming":[],"outgoing":[],"ranking":[]}';
+Future<String> socialAction(
+  String action,
+  Map<String, dynamic> payload,
+) async => '{"ok":false}';
+void socialLogin() {}
+void recordSocialSteps(int steps) {}
+bool get openRankingOnLaunch => false;
+
 bool get browserMotionSupported => false;
 void resetMotionAccess() {}
 Future<String> requestMotionAccess() async => 'unavailable';

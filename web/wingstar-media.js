@@ -4,7 +4,8 @@
   const BUILTIN = 'wingstar-calm';
   const tracks = new Map([[BUILTIN, {id:BUILTIN, name:'고요한 발걸음', source:'WingStar 오리지널 · 외부 곡·샘플 미사용'}]]);
   let selected = BUILTIN, enabled = true, volume = .45, status = 'stopped', notice = '';
-  const preferencesKey = 'wingstar.music.preferences.v1';
+  const storageSuffix = window.wingstarSocial?.storageSuffix || '';
+  const preferencesKey = 'wingstar.music.preferences.v1' + storageSuffix;
   let savedPreferences = {}, selectionChanged = false;
   try {
     const saved = JSON.parse(localStorage.getItem(preferencesKey) || '{}');
@@ -24,7 +25,7 @@
   function openDB() {
     if (!database) database = new Promise((resolve,reject) => {
       if (!window.indexedDB) return reject(new Error('storage'));
-      const request = indexedDB.open('wingstar-music-v1',1);
+      const request = indexedDB.open('wingstar-music-v1' + storageSuffix,1);
       request.onupgradeneeded = () => request.result.createObjectStore('tracks',{keyPath:'id'});
       request.onsuccess = () => resolve(request.result);
       request.onerror = () => reject(request.error);

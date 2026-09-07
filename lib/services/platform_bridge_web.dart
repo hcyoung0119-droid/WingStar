@@ -2,6 +2,23 @@ import 'dart:async';
 import 'dart:js_interop';
 import 'package:sensors_plus/sensors_plus.dart';
 
+@JS('wingstarSocial.state')
+external JSString _socialState();
+@JS('wingstarSocial.action')
+external JSPromise<JSString> _socialAction(JSString action, JSAny payload);
+@JS('wingstarSocial.login')
+external void _socialLogin();
+@JS('wingstarSocial.recordSteps')
+external void _recordSocialSteps(JSNumber steps);
+@JS('location.search')
+external JSString get _queryString;
+String socialState() => _socialState().toDart;
+Future<String> socialAction(String action, Map<String, dynamic> payload) =>
+    _socialAction(action.toJS, payload.jsify()!).toDart.then((v) => v.toDart);
+void socialLogin() => _socialLogin();
+void recordSocialSteps(int steps) => _recordSocialSteps(steps.toJS);
+bool get openRankingOnLaunch => _queryString.toDart.contains('ranking=1');
+
 @JS('wingstarProfile.pickPhoto')
 external JSPromise<JSString> _pickProfilePhoto();
 Future<String> pickProfilePhoto() =>

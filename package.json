@@ -1,0 +1,12 @@
+{
+  "name": "wingstar-social-server",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build:server": "node scripts/build-server.mjs",
+    "db:generate": "drizzle-kit generate",
+    "test:server": "node --test test/social-server.test.mjs"
+  },
+  "dependencies": {"jose": "6.2.12"},
+  "devDependencies": {"drizzle-kit": "0.31.10", "drizzle-orm": "0.45.2", "esbuild": "0.28.2"}
+}

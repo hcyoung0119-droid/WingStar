@@ -5,6 +5,7 @@ import 'dart:async';
 import '../services/step_engine.dart';
 import '../services/location_engine.dart';
 import '../services/walking_meditation.dart';
+import '../services/social_store.dart';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart' show StringCharacters;
@@ -225,6 +226,7 @@ class AppStore extends ChangeNotifier {
     this.stepEngine.addListener(_onSteps);
     this.locationEngine.addListener(_onLocation);
     this.meditation.addListener(_onMeditation);
+    social.addListener(notifyListeners);
     bridge.onVisibility((visible) {
       _appVisible = visible;
       if (!visible && !_disposed) {
@@ -233,11 +235,32 @@ class AppStore extends ChangeNotifier {
       }
     });
     if (kIsWeb || _stateReader != null) _restoreDeviceState();
+    if (social.authenticated && name.isEmpty) {
+      name = social.me['nickname'] as String? ?? '윙스타';
+      onboarded = true;
+    }
+    if (bridge.openRankingOnLaunch) {
+      tab = 2;
+      recordsRanking = true;
+    }
   }
 
   final StepEngine stepEngine;
   final LocationEngine locationEngine;
   final WalkingMeditation meditation;
+  final SocialStore social = SocialStore();
+  bool recordsRanking = false;
+  void openRankings() {
+    recordsRanking = true;
+    tab = 2;
+    notifyListeners();
+  }
+
+  void selectRecordsSection(bool ranking) {
+    recordsRanking = ranking;
+    notifyListeners();
+  }
+
   final String Function()? _stateReader;
   final bool Function(String)? _stateWriter;
   bool get _persistsDeviceState => kIsWeb || _stateWriter != null;
@@ -282,6 +305,8 @@ class AppStore extends ChangeNotifier {
     _walkClock.stop();
     meditation.removeListener(_onMeditation);
     meditation.dispose();
+    social.removeListener(notifyListeners);
+    social.dispose();
     bridge.stopMusic();
     bridge.stopVoice();
     bridge.releaseScreenAwake();
@@ -503,6 +528,7 @@ class AppStore extends ChangeNotifier {
       _accountedSteps = stepEngine.steps;
       if (delta > 0) {
         steps += delta;
+        bridge.recordSocialSteps(delta);
         _bumpMission('m1', steps);
         _bumpMission('m6', steps);
       }
@@ -715,30 +741,6 @@ class AppStore extends ChangeNotifier {
       target: 1,
       rewardWsc: 5,
       esgPillar: EsgPillar.governance,
-    ),
-  ];
-
-  final friends = const [
-    Friend(
-      id: 'f1',
-      name: '준호',
-      job: '호텔리어',
-      steps: 9120,
-      cabin: CabinClass.business,
-    ),
-    Friend(
-      id: 'f2',
-      name: '민지',
-      job: '간호사',
-      steps: 6400,
-      cabin: CabinClass.premiumEconomy,
-    ),
-    Friend(
-      id: 'f3',
-      name: '하린',
-      job: '카페 직원',
-      steps: 10240,
-      cabin: CabinClass.first,
     ),
   ];
 

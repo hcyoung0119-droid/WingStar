@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import '../widgets/app_sharing_card.dart';
 import '../widgets/profile_card.dart';
 import 'profile_editor_screen.dart';
+import 'ranking_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:wingstar/screens/ai_coach_screen.dart';
 import 'package:wingstar/screens/esg_screen.dart';
@@ -60,6 +61,8 @@ class MyScreen extends StatelessWidget {
                 ],
               ),
             ),
+            const SizedBox(height: 10),
+            SocialIdentityCard(store: store),
             const SizedBox(height: 10),
             GlassCard(
               onTap: () => _push(context, PremiumScreen(store: store)),

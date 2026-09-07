@@ -2,24 +2,50 @@ import 'package:flutter/material.dart';
 import 'package:wingstar/state/app_store.dart';
 import 'package:wingstar/theme/app_theme.dart';
 import 'package:wingstar/widgets/detail_charts.dart';
+import 'ranking_screen.dart';
 
 class RecordsScreen extends StatelessWidget {
   const RecordsScreen({super.key, required this.store});
   final AppStore store;
+  @override
+  Widget build(BuildContext context) => SkyBackground(
+    dark: store.darkMode,
+    child: SafeArea(
+      bottom: false,
+      child: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 10, 16, 4),
+            child: SizedBox(
+              width: double.infinity,
+              child: SegmentedButton<bool>(
+                segments: const [
+                  ButtonSegment(value: false, label: Text('기록')),
+                  ButtonSegment(value: true, label: Text('랭킹')),
+                ],
+                selected: {store.recordsRanking},
+                onSelectionChanged: (value) =>
+                    store.selectRecordsSection(value.first),
+              ),
+            ),
+          ),
+          Expanded(
+            child: store.recordsRanking
+                ? RankingPanel(store: store)
+                : _RecordDetails(store: store),
+          ),
+        ],
+      ),
+    ),
+  );
+}
+
+class _RecordDetails extends StatelessWidget {
+  const _RecordDetails({required this.store});
+  final AppStore store;
 
   @override
   Widget build(BuildContext context) {
-    final ranked = [
-      ...store.friends,
-      Friend(
-        id: 'me',
-        name: store.name,
-        job: store.job,
-        steps: store.steps,
-        cabin: store.cabin,
-      ),
-    ]..sort((a, b) => b.steps.compareTo(a.steps));
-
     return SkyBackground(
       dark: store.darkMode,
       child: SafeArea(
@@ -199,42 +225,16 @@ class RecordsScreen extends StatelessWidget {
             ),
             const SizedBox(height: 10),
             GlassCard(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    '친구 주간 걸음 랭킹',
-                    style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
-                  ),
-                  const SizedBox(height: 8),
-                  for (var i = 0; i < ranked.length; i++)
-                    ListTile(
-                      contentPadding: EdgeInsets.zero,
-                      leading: CircleAvatar(
-                        backgroundColor: i == 0
-                            ? WSColors.coin
-                            : WSColors.secondary,
-                        foregroundColor: i == 0 ? Colors.white : WSColors.text,
-                        child: Text(
-                          '${i + 1}',
-                          style: const TextStyle(fontWeight: FontWeight.w800),
-                        ),
-                      ),
-                      title: Text(
-                        '${ranked[i].name}${ranked[i].id == 'me' ? ' (나)' : ''}',
-                      ),
-                      subtitle: Text(
-                        '${ranked[i].job} · ${ranked[i].cabin.name} · ${ranked[i].steps}걸음',
-                      ),
-                      trailing: ranked[i].id == 'me'
-                          ? null
-                          : FilledButton.tonal(
-                              onPressed: () =>
-                                  store.cheerFriend(ranked[i].name),
-                              child: const Text('응원'),
-                            ),
-                    ),
-                ],
+              onTap: store.openRankings,
+              child: const ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: Icon(
+                  Icons.leaderboard_outlined,
+                  color: WSColors.primaryDark,
+                ),
+                title: Text('친구 · 주간 랭킹'),
+                subtitle: Text('내 아이디로 친구와 함께 걷기'),
+                trailing: Icon(Icons.chevron_right),
               ),
             ),
             const SizedBox(height: 10),

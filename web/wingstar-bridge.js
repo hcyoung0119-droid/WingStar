@@ -69,8 +69,8 @@
       try { await navigator.clipboard.writeText(publicUrl); return 'copied'; }
       catch (_) { return 'unavailable'; }
     },
-    loadState() { try { return localStorage.getItem('wingstar.device.v1') || ''; } catch (_) { return ''; } },
-    saveState(value) { try { localStorage.setItem('wingstar.device.v1',value); return true; } catch (_) { return false; } }
+    loadState() { try { return localStorage.getItem(window.wingstarSocial?.storageKey || 'wingstar.device.v1') || ''; } catch (_) { return ''; } },
+    saveState(value) { try { localStorage.setItem(window.wingstarSocial?.storageKey || 'wingstar.device.v1',value); return true; } catch (_) { return false; } }
   };
   probeExistingMotionAccess();
   document.addEventListener('visibilitychange', () => {
