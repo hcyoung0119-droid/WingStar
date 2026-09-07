@@ -216,17 +216,19 @@ class AppStore extends ChangeNotifier {
     StepEngine? stepEngine,
     LocationEngine? locationEngine,
     WalkingMeditation? meditation,
+    SocialStore? social,
     String Function()? loadDeviceState,
     bool Function(String)? saveDeviceState,
   }) : stepEngine = stepEngine ?? StepEngine(),
        locationEngine = locationEngine ?? LocationEngine(),
        meditation = meditation ?? WalkingMeditation(),
+       social = social ?? SocialStore(),
        _stateReader = loadDeviceState,
        _stateWriter = saveDeviceState {
     this.stepEngine.addListener(_onSteps);
     this.locationEngine.addListener(_onLocation);
     this.meditation.addListener(_onMeditation);
-    social.addListener(notifyListeners);
+    this.social.addListener(notifyListeners);
     bridge.onVisibility((visible) {
       _appVisible = visible;
       if (!visible && !_disposed) {
@@ -235,8 +237,8 @@ class AppStore extends ChangeNotifier {
       }
     });
     if (kIsWeb || _stateReader != null) _restoreDeviceState();
-    if (social.authenticated && name.isEmpty) {
-      name = social.me['nickname'] as String? ?? '윙스타';
+    if (this.social.authenticated && name.isEmpty) {
+      name = this.social.me['nickname'] as String? ?? '윙스타';
       onboarded = true;
     }
     if (bridge.openRankingOnLaunch) {
@@ -248,7 +250,7 @@ class AppStore extends ChangeNotifier {
   final StepEngine stepEngine;
   final LocationEngine locationEngine;
   final WalkingMeditation meditation;
-  final SocialStore social = SocialStore();
+  final SocialStore social;
   bool recordsRanking = false;
   void openRankings() {
     recordsRanking = true;

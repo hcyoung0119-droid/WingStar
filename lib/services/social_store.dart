@@ -4,7 +4,11 @@ import 'package:flutter/foundation.dart';
 import 'platform_bridge.dart' as bridge;
 
 class SocialStore extends ChangeNotifier {
-  SocialStore() {
+  SocialStore({
+    String Function()? readSnapshot,
+    Future<String> Function(String, Map<String, dynamic>)? performAction,
+  }) : _readSnapshot = readSnapshot ?? bridge.socialState,
+       _performAction = performAction ?? bridge.socialAction {
     refreshSnapshot();
     if (kIsWeb) {
       _poll = Timer.periodic(
@@ -14,6 +18,8 @@ class SocialStore extends ChangeNotifier {
     }
   }
   Timer? _poll;
+  final String Function() _readSnapshot;
+  final Future<String> Function(String, Map<String, dynamic>) _performAction;
   String _snapshot = '';
   Map<String, dynamic> data = {};
   bool lastActionCreated = false;
@@ -28,7 +34,7 @@ class SocialStore extends ChangeNotifier {
       .toList();
   void refreshSnapshot() {
     try {
-      final raw = bridge.socialState();
+      final raw = _readSnapshot();
       if (raw == _snapshot) return;
       _snapshot = raw;
       data = jsonDecode(raw);
@@ -41,7 +47,7 @@ class SocialStore extends ChangeNotifier {
     Map<String, dynamic> payload = const {},
   ]) async {
     lastActionCreated = false;
-    final pending = bridge.socialAction(name, payload);
+    final pending = _performAction(name, payload);
     refreshSnapshot();
     try {
       final result = jsonDecode(await pending);

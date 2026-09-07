@@ -77,7 +77,11 @@ class _RankingPanelState extends State<RankingPanel> {
   @override
   void initState() {
     super.initState();
-    unawaited(store.social.action('refresh'));
+    // The web bridge changes loading state immediately and notifies the app.
+    // Wait until this frame is built before updating an ancestor's state.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) unawaited(store.social.action('refresh'));
+    });
     refreshTimer = Timer.periodic(const Duration(seconds: 30), (_) {
       if (store.tab == 2 && store.recordsRanking && !store.social.busy) {
         unawaited(store.social.action('refresh'));

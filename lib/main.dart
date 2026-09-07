@@ -38,14 +38,15 @@ Future<void> main() async {
 }
 
 class WingStarApp extends StatefulWidget {
-  const WingStarApp({super.key});
+  const WingStarApp({super.key, this.store});
+  final AppStore? store;
 
   @override
   State<WingStarApp> createState() => _WingStarAppState();
 }
 
 class _WingStarAppState extends State<WingStarApp> {
-  final store = AppStore();
+  late final store = widget.store ?? AppStore();
   bool splashDone = false;
 
   @override
