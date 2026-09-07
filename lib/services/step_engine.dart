@@ -30,6 +30,17 @@ class StepEngine extends ChangeNotifier {
   DateTime? get sessionStartedAt => _ios?.startedAt;
   String? nativeDay;
   int? _nativePeriod;
+  String liveActivityStatus = 'idle';
+  String liveActivityError = '';
+
+  String get liveActivityMessage => switch (liveActivityStatus) {
+    'active' => '잠금화면 기록이 시작됐어요.',
+    'disabled' => '잠금화면 표시가 허용되지 않았어요. 아이폰 설정의 WingStar에서 실시간 현황을 확인해 주세요.',
+    'waiting_foreground' => '권한 창을 닫고 앱 화면에서 잠시 기다려 주세요.',
+    'dismissed' => '잠금화면 기록이 닫혔어요. 새 산책을 시작하면 다시 표시해요.',
+    'error' => '잠금화면 기록을 시작하지 못했어요. 걸음 기록은 계속됩니다.',
+    _ => '산책을 시작하면 잠금화면 기록을 연결해요.',
+  };
   StreamSubscription<AccelerometerEvent>? _subscription;
   Timer? _calibrationWatchdog;
 
@@ -139,6 +150,8 @@ class StepEngine extends ChangeNotifier {
     steps = 0;
     nativeDay = null;
     _nativePeriod = null;
+    liveActivityStatus = 'idle';
+    liveActivityError = '';
     status = StepEngineStatus.calibrating;
     statusMessage = '아이폰의 걸음 기록을 연결하고 있어요.';
     _safeNotify();
@@ -175,6 +188,8 @@ class StepEngine extends ChangeNotifier {
     if (period != _nativePeriod) steps = 0;
     _nativePeriod = period;
     nativeDay = day;
+    liveActivityStatus = value['liveActivityStatus'] as String? ?? 'idle';
+    liveActivityError = value['liveActivityError'] as String? ?? '';
     steps = math.max(steps, count);
     calibrationProgress = 1;
     status = StepEngineStatus.running;

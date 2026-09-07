@@ -62,6 +62,18 @@ class WalkingPanel extends StatelessWidget {
                 child: const Text('센서 다시 보정'),
               ),
             const SizedBox(height: 8),
+            if (engine.usesIosPedometer && store.walking) ...[
+              Text(
+                engine.liveActivityMessage,
+                style: const TextStyle(fontSize: 12, color: WSColors.muted),
+              ),
+              if (engine.liveActivityError.isNotEmpty)
+                Text(
+                  '확인 코드: ${engine.liveActivityError}',
+                  style: const TextStyle(fontSize: 11, color: WSColors.muted),
+                ),
+              const SizedBox(height: 8),
+            ],
             if (engine.usesIosPedometer)
               TextButton.icon(
                 onPressed: store.walking && !store.syncing

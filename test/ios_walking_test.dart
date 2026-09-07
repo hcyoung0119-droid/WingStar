@@ -18,12 +18,16 @@ void main() {
   var period = DateTime.now().millisecondsSinceEpoch;
   var token = '';
   var denied = false;
+  var liveStatus = 'active';
+  var liveError = '';
 
   Map<String, dynamic> snapshot([String? eventToken]) => {
     'token': eventToken ?? token,
     'steps': nativeCount,
     'day': day,
     'periodStartMs': period,
+    'liveActivityStatus': liveStatus,
+    'liveActivityError': liveError,
   };
 
   Future<void> emit([String? eventToken]) async {
@@ -41,6 +45,8 @@ void main() {
     nativeCount = 0;
     token = '';
     denied = false;
+    liveStatus = 'active';
+    liveError = '';
     day = DateTime.now().toIso8601String().substring(0, 10);
     period = DateTime.now().millisecondsSinceEpoch;
     messenger.setMockMethodCallHandler(IosPedometer.methods, (call) async {
@@ -212,4 +218,39 @@ void main() {
     expect(store.steps, 0);
     store.dispose();
   });
+
+  test(
+    'lock screen failure does not stop or duplicate measured steps',
+    () async {
+      final engine = sensor();
+      final store = AppStore(
+        stepEngine: engine,
+        locationEngine: TestLocationEngine(),
+      );
+      liveStatus = 'disabled';
+      await store.syncOrWalk();
+      nativeCount = 30;
+      await emit();
+      expect(store.steps, 30);
+      expect(engine.status, StepEngineStatus.running);
+      expect(engine.liveActivityMessage, contains('실시간 현황'));
+
+      liveStatus = 'error';
+      liveError = 'ActivityKit:1';
+      await engine.reconcile();
+      expect(store.steps, 30);
+      expect(engine.liveActivityError, 'ActivityKit:1');
+      expect(engine.status, StepEngineStatus.running);
+
+      liveStatus = 'active';
+      liveError = '';
+      nativeCount = 42;
+      await engine.reconcile();
+      await emit();
+      expect(store.steps, 42);
+      expect(engine.liveActivityMessage, contains('시작됐어요'));
+      expect(engine.liveActivityError, isEmpty);
+      store.dispose();
+    },
+  );
 }

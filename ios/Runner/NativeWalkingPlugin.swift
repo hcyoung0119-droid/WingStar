@@ -13,6 +13,23 @@ final class NativeWalkingPlugin: NSObject, FlutterPlugin, FlutterStreamHandler {
     private var updatesActive = false
     private let liveActivity = WalkingLiveActivity()
 
+    override init() {
+        super.init()
+        NotificationCenter.default.addObserver(self,
+            selector: #selector(didBecomeActive),
+            name: UIApplication.didBecomeActiveNotification, object: nil)
+    }
+
+    @objc private func didBecomeActive() {
+        guard let activeToken = token else { return }
+        // Permission sheets temporarily make the app inactive. Query again
+        // after they close so ActivityKit can create the card in the foreground.
+        snapshot { [weak self] value in
+            guard let self = self, self.token == activeToken else { return }
+            self.sink?(value)
+        }
+    }
+
     static func register(with registrar: FlutterPluginRegistrar) {
         let plugin = NativeWalkingPlugin()
         registrar.addMethodCallDelegate(plugin, channel: FlutterMethodChannel(
@@ -152,6 +169,8 @@ final class NativeWalkingPlugin: NSObject, FlutterPlugin, FlutterStreamHandler {
         formatter.timeZone = .current
         formatter.dateFormat = "yyyy-MM-dd"
         return ["token": token, "steps": data.numberOfSteps.intValue,
+                "liveActivityStatus": liveActivity.status,
+                "liveActivityError": liveActivity.errorCode ?? "",
                 "day": formatter.string(from: from),
                 "periodStartMs": Int64(from.timeIntervalSince1970 * 1000)]
     }
@@ -202,5 +221,8 @@ final class NativeWalkingPlugin: NSObject, FlutterPlugin, FlutterStreamHandler {
         return nil
     }
 
-    deinit { pedometer.stopUpdates() }
+    deinit {
+        NotificationCenter.default.removeObserver(self)
+        pedometer.stopUpdates()
+    }
 }
