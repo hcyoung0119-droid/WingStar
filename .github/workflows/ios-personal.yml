@@ -14,9 +14,9 @@ concurrency:
 
 jobs:
   iphone:
-    # Standard runners in this existing public repository are free. Never run
+    # Standard runners in a public repository are free. Never run
     # this job in a private fork, on a larger runner, or on a paid Mac service.
-    if: github.repository == 'bhaul0119-hue/Wingstar' && github.event.repository.private == false
+    if: github.event.repository.private == false
     runs-on: macos-15
     timeout-minutes: 40
     steps:
