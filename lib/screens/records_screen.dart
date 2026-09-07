@@ -38,6 +38,42 @@ class RecordsScreen extends StatelessWidget {
               style: TextStyle(color: WSColors.muted),
             ),
             const SizedBox(height: 14),
+            if (store.meditationHistory.isNotEmpty) ...[
+              GlassCard(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      '걷기 명상 기록',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w800,
+                        fontSize: 18,
+                      ),
+                    ),
+                    for (final entry in store.meditationHistory.take(10))
+                      ListTile(
+                        contentPadding: EdgeInsets.zero,
+                        leading: Icon(
+                          entry['greenWalk'] == true
+                              ? Icons.eco_outlined
+                              : Icons.headphones_rounded,
+                          color: WSColors.primary,
+                        ),
+                        title: Text(
+                          '${entry['minutes']}분 ${entry['greenWalk'] == true ? '지구를 걷는 마음 · 체험' : '걷기 명상'}',
+                        ),
+                        subtitle: Text(
+                          '${(entry['startedAt'] as String? ?? '').split('T').first} · ${entry['steps']}걸음 · ${((entry['distanceMeters'] as num? ?? 0) / 1000).toStringAsFixed(2)}km',
+                        ),
+                        trailing: Text(
+                          entry['completed'] == true ? '완료' : '중도 종료',
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 14),
+            ],
             GlassCard(
               child: ExpansionTile(
                 tilePadding: EdgeInsets.zero,

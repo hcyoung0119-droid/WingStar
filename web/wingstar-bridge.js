@@ -1,15 +1,53 @@
 (() => {
   const publicUrl = 'https://wingstar-care.use-loing-ai.chatgpt.site/';
   let motionListener;
+  const motionConsentKey = 'wingstar.motion.consent.v1';
+  let motionGranted = false, motionRequest, probeListener, probeTimer;
+  function rememberMotionGrant() {
+    motionGranted = true;
+    try { localStorage.setItem(motionConsentKey, 'granted'); } catch (_) {}
+  }
+  function stopMotionProbe() {
+    if (probeListener) window.removeEventListener('devicemotion', probeListener);
+    probeListener = null; clearTimeout(probeTimer);
+  }
+  function probeExistingMotionAccess() {
+    stopMotionProbe();
+    if (motionGranted || document.hidden) return;
+    try { if (localStorage.getItem(motionConsentKey) !== 'granted') return; } catch (_) { return; }
+    // A saved preference is only a hint. Real browser-delivered sensor data
+    // proves this document can still use the permission, without a new prompt.
+    probeListener = event => {
+      const a = event.accelerationIncludingGravity;
+      if (event.isTrusted && !document.hidden && a && [a.x,a.y,a.z].every(Number.isFinite)) {
+        rememberMotionGrant(); stopMotionProbe();
+      }
+    };
+    window.addEventListener('devicemotion', probeListener);
+    probeTimer = setTimeout(stopMotionProbe, 1500);
+  }
   window.wingstar = {
     get motionSupported() { return window.isSecureContext && typeof window.DeviceMotionEvent !== 'undefined' && (/iPhone|iPad|Android/i.test(navigator.userAgent) || navigator.maxTouchPoints > 1); },
     requestMotionAccess() {
       if (!this.motionSupported) return Promise.resolve('unavailable');
+      if (motionGranted) return Promise.resolve('granted');
+      if (motionRequest) return motionRequest;
       try {
-        if (typeof DeviceMotionEvent.requestPermission === 'function') return DeviceMotionEvent.requestPermission().catch(() => 'denied');
+        if (typeof DeviceMotionEvent.requestPermission === 'function') {
+          // Keep this call synchronous: Safari requires the original start tap.
+          const requested = DeviceMotionEvent.requestPermission();
+          motionRequest = Promise.resolve(requested).then(result => {
+            if (result === 'granted') rememberMotionGrant();
+            else { try { localStorage.removeItem(motionConsentKey); } catch (_) {} }
+            stopMotionProbe(); return result;
+          }).catch(() => 'denied').finally(() => { motionRequest = null; });
+          return motionRequest;
+        }
+        rememberMotionGrant();
         return Promise.resolve('granted');
       } catch (_) { return Promise.resolve('denied'); }
     },
+    resetMotionAccess() { motionGranted = false; stopMotionProbe(); },
     startMotion(callback) {
       this.stopMotion();
       motionListener = event => {
@@ -34,6 +72,12 @@
     loadState() { try { return localStorage.getItem('wingstar.device.v1') || ''; } catch (_) { return ''; } },
     saveState(value) { try { localStorage.setItem('wingstar.device.v1',value); return true; } catch (_) { return false; } }
   };
+  probeExistingMotionAccess();
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) stopMotionProbe(); else probeExistingMotionAccess();
+  });
+  window.addEventListener('pageshow', probeExistingMotionAccess);
+  window.addEventListener('pagehide', stopMotionProbe);
   window.addEventListener('flutter-first-frame',()=>document.getElementById('loading')?.remove(),{once:true});
   window.addEventListener('load',()=>{ if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(()=>{}); });
 })();

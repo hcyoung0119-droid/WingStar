@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:wingstar/main.dart';
 import 'package:wingstar/screens/activity_screens.dart';
 import 'package:wingstar/screens/esg_screen.dart';
+import 'package:wingstar/screens/green_walk_screen.dart';
 import 'package:wingstar/state/app_store.dart' as model;
 import 'package:wingstar/theme/app_theme.dart';
 import 'package:wingstar/widgets/mind_calendar.dart';
@@ -108,7 +109,7 @@ void main() {
       for (final destination in <(String, Type)>[
         ('home-walking', WalkingScreen),
         ('home-meditation', MeditationScreen),
-        ('home-plogging', PloggingScreen),
+        ('home-plogging', GreenWalkScreen),
         ('home-esg', EsgScreen),
       ]) {
         await tester.ensureVisible(find.byKey(Key(destination.$1)));

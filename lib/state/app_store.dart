@@ -4,6 +4,7 @@ import 'dart:math';
 import 'dart:async';
 import '../services/step_engine.dart';
 import '../services/location_engine.dart';
+import '../services/walking_meditation.dart';
 
 import 'package:flutter/foundation.dart';
 import 'package:intl/intl.dart';
@@ -209,16 +210,43 @@ class MembershipPlan {
 }
 
 class AppStore extends ChangeNotifier {
-  AppStore({StepEngine? stepEngine, LocationEngine? locationEngine})
-    : stepEngine = stepEngine ?? StepEngine(),
-      locationEngine = locationEngine ?? LocationEngine() {
+  AppStore({
+    StepEngine? stepEngine,
+    LocationEngine? locationEngine,
+    WalkingMeditation? meditation,
+    String Function()? loadDeviceState,
+    bool Function(String)? saveDeviceState,
+  }) : stepEngine = stepEngine ?? StepEngine(),
+       locationEngine = locationEngine ?? LocationEngine(),
+       meditation = meditation ?? WalkingMeditation(),
+       _stateReader = loadDeviceState,
+       _stateWriter = saveDeviceState {
     this.stepEngine.addListener(_onSteps);
     this.locationEngine.addListener(_onLocation);
-    if (kIsWeb) _restoreDeviceState();
+    this.meditation.addListener(_onMeditation);
+    bridge.onVisibility((visible) {
+      _appVisible = visible;
+      if (!visible && !_disposed) {
+        pauseMeditation(reason: '화면을 벗어나 코스를 일시정지했어요.');
+        if (_persistsDeviceState) _saveDeviceState();
+      }
+    });
+    if (kIsWeb || _stateReader != null) _restoreDeviceState();
   }
 
   final StepEngine stepEngine;
   final LocationEngine locationEngine;
+  final WalkingMeditation meditation;
+  final String Function()? _stateReader;
+  final bool Function(String)? _stateWriter;
+  bool get _persistsDeviceState => kIsWeb || _stateWriter != null;
+  final List<Map<String, dynamic>> meditationHistory = [];
+  bool preparingMeditation = false;
+  bool voiceGuidance = false;
+  bool _meditationOwnsWalk = false;
+  bool _appVisible = true;
+  String? _recordedMeditation;
+  int _spokenPhase = -1;
   Timer? _walkTimer;
   Timer? _saveTimer;
   final Stopwatch _walkClock = Stopwatch();
@@ -236,7 +264,7 @@ class AppStore extends ChangeNotifier {
   @override
   void notifyListeners() {
     if (_disposed) return;
-    if (kIsWeb && !(_saveTimer?.isActive ?? false)) {
+    if (_persistsDeviceState && !(_saveTimer?.isActive ?? false)) {
       _saveTimer = Timer(const Duration(milliseconds: 500), _saveDeviceState);
     }
     super.notifyListeners();
@@ -244,11 +272,16 @@ class AppStore extends ChangeNotifier {
 
   @override
   void dispose() {
-    if (kIsWeb) _saveDeviceState();
+    if (_persistsDeviceState) _saveDeviceState();
     _saveTimer?.cancel();
     _disposed = true;
     _walkTimer?.cancel();
     _walkClock.stop();
+    meditation.removeListener(_onMeditation);
+    meditation.dispose();
+    bridge.stopMusic();
+    bridge.stopVoice();
+    bridge.releaseScreenAwake();
     stepEngine.removeListener(_onSteps);
     locationEngine.removeListener(_onLocation);
     stepEngine.dispose();
@@ -257,7 +290,7 @@ class AppStore extends ChangeNotifier {
   }
 
   void _saveDeviceState() {
-    bridge.saveDeviceState(
+    (_stateWriter ?? bridge.saveDeviceState)(
       jsonEncode({
         'date': DateTime.now().toIso8601String().substring(0, 10),
         'onboarded': onboarded,
@@ -275,6 +308,7 @@ class AppStore extends ChangeNotifier {
         'attended': _attendedToday,
         'sensitivity': sensitivity,
         'recordLocation': recordLocation,
+        'voiceGuidance': voiceGuidance,
         'stress': stress,
         'ecoActions': ecoActions,
         'socialActions': socialActions,
@@ -282,6 +316,7 @@ class AppStore extends ChangeNotifier {
         'carbonSavedKg': carbonSavedKg,
         'smileCount': smileCount,
         'breathingSessions': breathingSessions,
+        'meditationHistory': meditationHistory.take(100).toList(),
         'ploggingSessions': ploggingSessions,
         'litterCollected': litterCollected,
         'lastPloggingAt': lastPloggingAt?.toIso8601String(),
@@ -337,7 +372,7 @@ class AppStore extends ChangeNotifier {
 
   void _restoreDeviceState() {
     try {
-      final raw = bridge.loadDeviceState();
+      final raw = (_stateReader ?? bridge.loadDeviceState)();
       if (raw.isEmpty) return;
       final d = jsonDecode(raw) as Map<String, dynamic>;
       final sameDay =
@@ -363,6 +398,12 @@ class AppStore extends ChangeNotifier {
       sensitivity = d['sensitivity'] as String? ?? 'normal';
       stepEngine.setSensitivity(sensitivity);
       recordLocation = d['recordLocation'] == true;
+      voiceGuidance = d['voiceGuidance'] == true;
+      meditationHistory.addAll(
+        (d['meditationHistory'] as List? ?? []).whereType<Map>().map(
+          (e) => Map<String, dynamic>.from(e),
+        ),
+      );
       ploggingSessions = d['ploggingSessions'] as int? ?? 0;
       litterCollected = d['litterCollected'] as int? ?? 0;
       lastPloggingAt = DateTime.tryParse(d['lastPloggingAt'] as String? ?? '');
@@ -434,7 +475,10 @@ class AppStore extends ChangeNotifier {
     }
   }
 
-  void _onLocation() => notifyListeners();
+  void _onLocation() {
+    meditation.sample(steps, distanceKm * 1000);
+    notifyListeners();
+  }
 
   void _onSteps() {
     if (walking && !isTestSession) {
@@ -446,6 +490,7 @@ class AppStore extends ChangeNotifier {
         _bumpMission('m6', steps);
       }
     }
+    meditation.sample(steps, distanceKm * 1000);
     notifyListeners();
   }
 
@@ -459,6 +504,7 @@ class AppStore extends ChangeNotifier {
   void setSensitivity(String value) {
     sensitivity = value;
     stepEngine.setSensitivity(value);
+    if (_persistsDeviceState) _saveDeviceState();
   }
 
   Future<void> retryCalibration() async {
@@ -978,6 +1024,137 @@ class AppStore extends ChangeNotifier {
     notifyListeners();
   }
 
+  int get completedWalkingMeditations =>
+      meditationHistory.where((e) => e['completed'] == true).length;
+
+  Future<void> startWalkingMeditation(
+    int minutes, {
+    bool greenWalk = false,
+  }) async {
+    if (preparingMeditation || meditation.active || syncing || _disposed) {
+      return;
+    }
+    preparingMeditation = true;
+    _meditationOwnsWalk = !walking;
+    _spokenPhase = -1;
+    final music = bridge.playMusic();
+    final walk = walking ? Future<void>.value() : syncOrWalk();
+    notifyListeners();
+    try {
+      await walk;
+      if (_disposed) return;
+      await music;
+      if (_disposed) return;
+      meditation.start(
+        courseMinutes: minutes,
+        campaign: greenWalk,
+        totalSteps: steps,
+        totalMeters: distanceKm * 1000,
+      );
+      if (!_appVisible) {
+        pauseMeditation(reason: '화면을 벗어나 코스를 일시정지했어요.');
+      } else {
+        unawaited(bridge.keepScreenAwake());
+        _readMeditationCue();
+      }
+    } catch (_) {
+      bridge.stopMusic();
+      showToast('걷기 명상을 시작하지 못했어요. 다시 시도해 주세요.');
+    } finally {
+      preparingMeditation = false;
+      notifyListeners();
+    }
+  }
+
+  void pauseMeditation({String? reason}) {
+    if (meditation.status != MeditationStatus.running) return;
+    meditation.sample(steps, distanceKm * 1000);
+    meditation.pause(reason: reason);
+    bridge.pauseMusic();
+    bridge.stopVoice();
+    bridge.releaseScreenAwake();
+  }
+
+  Future<void> resumeMeditation() async {
+    if (preparingMeditation ||
+        syncing ||
+        meditation.status != MeditationStatus.paused) {
+      return;
+    }
+    preparingMeditation = true;
+    final music = bridge.playMusic();
+    final walk = walking ? Future<void>.value() : syncOrWalk();
+    notifyListeners();
+    try {
+      await walk;
+      await music;
+      if (_disposed || !_appVisible) {
+        bridge.pauseMusic();
+        return;
+      }
+      meditation.resume(totalSteps: steps, totalMeters: distanceKm * 1000);
+      unawaited(bridge.keepScreenAwake());
+    } finally {
+      preparingMeditation = false;
+      notifyListeners();
+    }
+  }
+
+  void endMeditation() {
+    meditation.sample(steps, distanceKm * 1000);
+    meditation.end();
+  }
+
+  void _readMeditationCue() {
+    if (voiceGuidance &&
+        meditation.status == MeditationStatus.running &&
+        _spokenPhase != meditation.phase) {
+      _spokenPhase = meditation.phase;
+      bridge.speakCue(meditation.cues[meditation.phase]);
+    }
+  }
+
+  void setVoiceGuidance(bool value) {
+    voiceGuidance = value;
+    if (value) {
+      _spokenPhase = -1;
+      _readMeditationCue();
+    } else {
+      bridge.stopVoice();
+    }
+    if (_persistsDeviceState) _saveDeviceState();
+    notifyListeners();
+  }
+
+  void setRecordLocation(bool value) {
+    recordLocation = value;
+    if (_persistsDeviceState) _saveDeviceState();
+    notifyListeners();
+  }
+
+  void _onMeditation() {
+    if (_disposed) return;
+    _readMeditationCue();
+    if ((meditation.status == MeditationStatus.completed ||
+            meditation.status == MeditationStatus.ended) &&
+        meditation.id != _recordedMeditation) {
+      _recordedMeditation = meditation.id;
+      meditationHistory.insert(0, meditation.toRecord());
+      if (meditationHistory.length > 100) meditationHistory.removeLast();
+      bridge.stopMusic();
+      bridge.stopVoice();
+      bridge.releaseScreenAwake();
+      if (_meditationOwnsWalk && walking && !syncing) unawaited(syncOrWalk());
+      _meditationOwnsWalk = false;
+      showToast(
+        meditation.status == MeditationStatus.completed
+            ? '걷기 명상을 완료했어요'
+            : '진행한 걷기 명상을 기록했어요',
+      );
+    }
+    notifyListeners();
+  }
+
   void checkAttendance() {
     if (streak > 0 && _attendedToday) {
       showToast('오늘은 이미 출석했어요');
@@ -999,6 +1176,9 @@ class AppStore extends ChangeNotifier {
     notifyListeners();
     try {
       if (walking) {
+        if (meditation.status == MeditationStatus.running) {
+          pauseMeditation(reason: '걷기 측정이 종료되어 코스를 일시정지했어요.');
+        }
         walking = false;
         _walkClock.stop();
         _walkTimer?.cancel();

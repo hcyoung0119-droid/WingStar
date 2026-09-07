@@ -191,7 +191,35 @@ class MyScreen extends StatelessWidget {
                 ],
               ),
             ),
-            if (kIsWeb) ...[const SizedBox(height: 20), const AppSharingCard()],
+            if (kIsWeb) ...[
+              const SizedBox(height: 10),
+              const GlassCard(
+                child: ExpansionTile(
+                  tilePadding: EdgeInsets.zero,
+                  title: Text(
+                    '아이폰 권한 설정',
+                    style: TextStyle(fontWeight: FontWeight.w700),
+                  ),
+                  children: [
+                    Padding(
+                      padding: EdgeInsets.only(bottom: 12),
+                      child: Text(
+                        'GPS 기록·음악·음성 설정은 이 브라우저에 저장돼요. 이미 허용된 동작·위치 권한을 사용하며, 앱을 열 때 권한을 자동 요청하지 않아요.\n\n'
+                        '위치 확인창이 계속 뜨면 Safari에서 WingStar 열기 → 페이지 메뉴 → 더 보기 → 이 웹사이트 설정 → 위치 → 허용으로 설정해 주세요.\n\n'
+                        '동작 권한은 아이폰이 다시 확인하도록 초기화할 수 있어요. 이 경우 걷기 시작 때 한 번 허용해야 합니다. Safari·홈 화면 앱·카카오톡은 저장 공간과 권한이 다를 수 있으니 같은 방식으로 열어 주세요.',
+                        style: TextStyle(
+                          fontSize: 13,
+                          height: 1.6,
+                          color: WSColors.muted,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 20),
+              const AppSharingCard(),
+            ],
           ],
         ),
       ),

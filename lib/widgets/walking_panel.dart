@@ -77,10 +77,7 @@ class WalkingPanel extends StatelessWidget {
               value: store.recordLocation,
               onChanged: store.walking || store.syncing
                   ? null
-                  : (value) {
-                      store.recordLocation = value;
-                      store.notifyListeners();
-                    },
+                  : store.setRecordLocation,
             ),
             if (store.recordLocation)
               Text(
@@ -88,7 +85,10 @@ class WalkingPanel extends StatelessWidget {
                 style: const TextStyle(fontSize: 12, color: WSColors.muted),
               ),
             if (kIsWeb)
-              const Text('아이폰은 동작 권한을 허용하고 앱 화면을 켜둔 동안 측정해요. 건강 앱 걸음 수는 가져오지 않습니다.', style: TextStyle(fontSize: 12, color: WSColors.muted)),
+              const Text(
+                '아이폰은 동작 권한을 허용하고 앱 화면을 켜둔 동안 측정해요. 건강 앱 걸음 수는 가져오지 않습니다.',
+                style: TextStyle(fontSize: 12, color: WSColors.muted),
+              ),
             const Text(
               '걸음 보상 서버는 아직 연결되지 않았어요. 샵·구독·기존 기록은 데모입니다.',
               style: TextStyle(

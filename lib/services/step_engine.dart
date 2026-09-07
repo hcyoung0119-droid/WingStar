@@ -160,7 +160,8 @@ class StepEngine extends ChangeNotifier {
 
     if (elapsed >= maxCalibration) {
       if (_samples.length < 20) {
-        _markUnavailable('센서 신호가 들어오지 않았습니다. PC에서는 테스트 모드를 사용해 주세요.');
+        if (kIsWeb) bridge.resetMotionAccess();
+        _markUnavailable('센서 신호가 들어오지 않았어요. 휴대폰에서는 동작 권한을 확인한 뒤 다시 시작해 주세요.');
         return;
       }
 

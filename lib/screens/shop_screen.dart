@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:wingstar/state/app_store.dart';
 import 'package:wingstar/theme/app_theme.dart';
+import 'package:wingstar/screens/green_walk_screen.dart';
 
 class ShopScreen extends StatelessWidget {
   const ShopScreen({super.key, required this.store});
@@ -16,6 +17,8 @@ class ShopScreen extends StatelessWidget {
         child: ListView(
           padding: const EdgeInsets.fromLTRB(16, 16, 16, 28),
           children: [
+            const GreenRewardPreview(),
+            const SizedBox(height: 20),
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [

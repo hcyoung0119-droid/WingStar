@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:wingstar/screens/activity_screens.dart';
 import 'package:wingstar/screens/esg_screen.dart';
+import 'package:wingstar/screens/green_walk_screen.dart';
+import 'package:wingstar/screens/walking_meditation_screen.dart';
 import 'package:wingstar/state/app_store.dart';
 import 'package:wingstar/theme/app_theme.dart';
 
@@ -30,9 +32,58 @@ class HomeScreen extends StatelessWidget {
           padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
           children: [
             _Header(store: store),
+            const SizedBox(height: 20),
+            GlassCard(
+              color: WSColors.primarySoft,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'WALK FOR ME',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w800,
+                      color: WSColors.primaryDark,
+                      letterSpacing: 1.2,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  const Text(
+                    '오늘의 걷기 명상',
+                    style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800),
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    '내 마음을 돌보는 걸음에서,\n우리가 사는 지구를 돌보는 걸음으로.',
+                    style: TextStyle(height: 1.6),
+                  ),
+                  const SizedBox(height: 14),
+                  FilledButton.icon(
+                    key: const Key('home-walking-meditation'),
+                    onPressed: () => _push(
+                      context,
+                      () => WalkingMeditationScreen(store: store),
+                    ),
+                    icon: const Icon(Icons.headphones_rounded),
+                    label: Text(
+                      store.meditation.active
+                          ? '진행 중인 코스 이어서 보기'
+                          : '5·10·20분 코스 고르기',
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  TextButton.icon(
+                    onPressed: () =>
+                        _push(context, () => GreenWalkScreen(store: store)),
+                    icon: const Icon(Icons.eco_outlined),
+                    label: const Text('SPECIAL WALK · GREEN WALK 살펴보기'),
+                  ),
+                ],
+              ),
+            ),
             const SizedBox(height: 24),
             const Text(
-              '나와 지구를 돌보는 하루',
+              '내 활동 이어가기',
               style: TextStyle(fontSize: 19, fontWeight: FontWeight.w800),
             ),
             const SizedBox(height: 6),
@@ -41,13 +92,15 @@ class HomeScreen extends StatelessWidget {
               style: TextStyle(color: WSColors.muted),
             ),
             const SizedBox(height: 14),
-            GridView.count(
+            GridView(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
-              crossAxisCount: 2,
-              mainAxisSpacing: 10,
-              crossAxisSpacing: 10,
-              childAspectRatio: .96,
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 2,
+                mainAxisSpacing: 10,
+                crossAxisSpacing: 10,
+                mainAxisExtent: 180,
+              ),
               children: [
                 _ActivityTile(
                   key: const Key('home-walking'),
@@ -73,14 +126,14 @@ class HomeScreen extends StatelessWidget {
                 ),
                 _ActivityTile(
                   key: const Key('home-plogging'),
-                  title: '플로깅',
+                  title: 'GREEN WALK',
                   icon: Icons.recycling_rounded,
                   color: WSColors.success,
                   background: WSColors.mint.withValues(alpha: .4),
-                  detail: '${store.ploggingSessions}회 실천',
-                  subtitle: '산책길을 깨끗하게',
+                  detail: '환경 캠페인',
+                  subtitle: '준비 중 · 개인 기록 가능',
                   onTap: () =>
-                      _push(context, () => PloggingScreen(store: store)),
+                      _push(context, () => GreenWalkScreen(store: store)),
                 ),
                 _ActivityTile(
                   key: const Key('home-esg'),
@@ -208,7 +261,7 @@ class _ActivityTile extends StatelessWidget {
         const Spacer(),
         Text(
           title,
-          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
         ),
         const SizedBox(height: 4),
         Text(

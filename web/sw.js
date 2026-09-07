@@ -1,5 +1,5 @@
-const CACHE='wingstar-v3';
-const SHELL=['/','/index.html','/manifest.json','/wingstar-bridge.js','/flutter_bootstrap.js','/main.dart.js','/icons/Icon-192.png','/icons/Icon-512.png'];
+const CACHE='wingstar-v4';
+const SHELL=['/','/index.html','/manifest.json','/wingstar-bridge.js','/wingstar-media.js','/music-credits.html','/flutter_bootstrap.js','/main.dart.js','/icons/Icon-192.png','/icons/Icon-512.png'];
 self.addEventListener('install',event=>event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(SHELL))));
 self.addEventListener('activate',event=>event.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k.startsWith('wingstar-')&&k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim())));
 self.addEventListener('fetch',event=>{

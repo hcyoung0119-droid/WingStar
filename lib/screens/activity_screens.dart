@@ -5,6 +5,7 @@ import 'package:wingstar/theme/app_theme.dart';
 import 'package:wingstar/widgets/breathing_sheet.dart';
 import 'package:wingstar/widgets/step_ring.dart';
 import 'package:wingstar/widgets/walking_panel.dart';
+import 'package:wingstar/screens/walking_meditation_screen.dart';
 
 class WalkingScreen extends StatelessWidget {
   const WalkingScreen({super.key, required this.store});
@@ -17,6 +18,17 @@ class WalkingScreen extends StatelessWidget {
       dark: store.darkMode,
       children: [
         const Text('내 속도로 가볍게 걸어보세요.', style: TextStyle(color: WSColors.muted)),
+        const SizedBox(height: 12),
+        OutlinedButton.icon(
+          onPressed: () => Navigator.push(
+            context,
+            MaterialPageRoute<void>(
+              builder: (_) => WalkingMeditationScreen(store: store),
+            ),
+          ),
+          icon: const Icon(Icons.headphones_rounded),
+          label: const Text('음악과 함께 걷기 명상'),
+        ),
         const SizedBox(height: 20),
         Center(
           child: StepRing(
@@ -80,6 +92,25 @@ class MeditationScreen extends StatelessWidget {
       title: '명상',
       dark: store.darkMode,
       children: [
+        GlassCard(
+          onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute<void>(
+              builder: (_) => WalkingMeditationScreen(store: store),
+            ),
+          ),
+          child: const ListTile(
+            contentPadding: EdgeInsets.zero,
+            leading: Icon(Icons.headphones_rounded, color: WSColors.mind),
+            title: Text(
+              '걷기 명상 코스',
+              style: TextStyle(fontWeight: FontWeight.w800),
+            ),
+            subtitle: Text('5·10·20분 · 음악과 함께 내 속도로'),
+            trailing: Icon(Icons.chevron_right),
+          ),
+        ),
+        const SizedBox(height: 14),
         GlassCard(
           color: WSColors.lavender.withValues(alpha: .25),
           child: Column(
