@@ -26,6 +26,12 @@ unless extension
   embed.add_file_reference(extension.product_reference, true)
 end
 
+# Copy the widget before Flutter strips the embedded binaries, keeping the
+# extension outside the dependency chain of that final processing phase.
+embed = app.copy_files_build_phases.find { |phase| phase.name == 'Embed App Extensions' }
+thin = app.shell_script_build_phases.find { |phase| phase.name == 'Thin Binary' }
+app.build_phases.move(embed, app.build_phases.index(thin)) if embed && thin
+
 project.build_configurations.each { |c| c.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '16.2' }
 app.build_configurations.each do |config|
   config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '16.2'
