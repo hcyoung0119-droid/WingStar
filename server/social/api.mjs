@@ -114,6 +114,21 @@ export function createSocialApi({verifyIdentity=verifyGoogleIdentity,clock=()=>D
         return json({ok:true});
       }
       if(path==='/api/social/search'&&request.method==='GET'){
+        if(url.searchParams.has('q')) {
+          const query=(url.searchParams.get('q')||'').trim();
+          if(!query||[...query].length>24||/[\u0000-\u001f\u007f]/.test(query))fail(400,'닉네임을 1~24자로 입력해 주세요. 아이디로도 찾을 수 있어요.');
+          const isId=/^WS-[A-HJ-NP-Z2-9]{10}$/i.test(query);
+          const pattern='%'+query.replace(/[!%_]/g,char=>'!'+char)+'%';
+          const matches=await rows(env,`SELECT u.*,f.status AS relationship_status,f.requested_by FROM social_users u
+            LEFT JOIN social_friendships f ON (f.user_low=? AND f.user_high=u.id) OR (f.user_high=? AND f.user_low=u.id)
+            WHERE ${isId?'u.public_id=?':"u.nickname LIKE ? ESCAPE '!'"}
+            ORDER BY CASE WHEN u.nickname=? COLLATE NOCASE THEN 0 ELSE 1 END,u.nickname COLLATE NOCASE,u.public_id LIMIT 21`,
+            [user.id,user.id,isId?query.toUpperCase():pattern,query]);
+          return json({query,hasMore:matches.length>20,results:matches.slice(0,20).map(other=>({
+            user:publicUser(other),relationship:other.id===user.id?'self':other.relationship_status==='accepted'?'friend':other.relationship_status==='pending'?other.requested_by===user.id?'outgoing':'incoming':'none',
+          }))});
+        }
+        // Older clients can keep using exact ID lookup during an app update.
         const other=await otherUser(env,(url.searchParams.get('id')||'').trim().toUpperCase());
         const linked=await relation(env,user.id,other.id);
         return json({user:publicUser(other),relationship:other.id===user.id?'self':linked?linked.status==='accepted'?'friend':linked.requested_by===user.id?'outgoing':'incoming':'none'});

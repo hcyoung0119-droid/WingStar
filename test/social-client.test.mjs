@@ -6,7 +6,7 @@ import {webcrypto} from 'node:crypto';
 
 const source=readFileSync('web/wingstar-social.js','utf8');
 const account=id=>({configured:true,authenticated:true,me:{id,nickname:id},friends:[],incoming:[],outgoing:[]});
-function setup({storage=new Map(),state=account('WS-AAAAAAAAAA'),activity=()=>({ok:true})}={}) {
+function setup({storage=new Map(),state=account('WS-AAAAAAAAAA'),activity=()=>({ok:true}),search=()=>({results:[],hasMore:false}),mutate=()=>({ok:true})}={}) {
   const calls=[],intervals=[],events={};let reloads=0,replaced='',offline=false;
   const context={Date,AbortController,crypto:webcrypto,setTimeout,clearTimeout,
     setInterval:fn=>{intervals.push(fn);return intervals.length;},
@@ -21,8 +21,9 @@ function setup({storage=new Map(),state=account('WS-AAAAAAAAAA'),activity=()=>({
       calls.push({path,options,payload});let body;
       if(path==='state')body=state;
       else if(path==='activity')body=await activity(payload,options);
+      else if(path.startsWith('search?q='))body=await search(decodeURIComponent(path.slice('search?q='.length)));
       else if(path.startsWith('rankings'))body={rows:[],me:null,week:'2026-09-07',today:'2026-09-07'};
-      else body={ok:true};
+      else body=await mutate(path,payload);
       return {ok:!body.status,status:body.status||200,json:async()=>body};
     },
   };
@@ -88,4 +89,19 @@ test('invalid measurements never enter the upload queue',async()=>{
   const a=setup();await a.api.boot();
   for(const steps of [0,-1,NaN,Infinity,0.5,10001,'3'])a.api.recordSteps(steps);
   await a.flush();assert.equal(a.calls.filter(v=>v.path==='activity').length,0);
+});
+
+test('nickname search retains Korean input, selects one duplicate by ID and refreshes its request status',async()=>{
+  let requested='';const duplicateIds=['WS-BBBBBBBBBB','WS-CCCCCCCCCC'];
+  const a=setup({search:query=>({query,hasMore:false,results:duplicateIds.map(id=>({user:{id,nickname:'산책 친구'},relationship:id===requested?'outgoing':'none'}))}),
+    mutate:(path,payload)=>{if(path==='friends/request')requested=payload.id;return {ok:true};}});
+  await a.api.boot();await a.api.action('search',{query:' 산책 '});
+  assert.equal(a.calls.find(v=>v.path.startsWith('search?')).path,'search?q='+encodeURIComponent('산책'));
+  assert.equal(JSON.parse(a.api.state()).search.results.length,2);
+  await a.api.action('request',{id:duplicateIds[1]});
+  const result=JSON.parse(a.api.state()).search;
+  assert.equal(result.query,'산책');assert.equal(result.results[0].relationship,'none');assert.equal(result.results[1].relationship,'outgoing');
+  assert.equal(a.calls.find(v=>v.path==='friends/request').payload.id,duplicateIds[1]);
+  const before=a.calls.length;await a.api.action('search',{query:' '});assert.equal(a.calls.length,before);
+  assert.equal(JSON.parse(a.api.state()).search,null);
 });

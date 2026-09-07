@@ -1,7 +1,7 @@
 (() => {
   let data={configured:false,authenticated:false,loading:true,notice:'',scope:'friends',ranking:[],incoming:[],outgoing:[],friends:[]};
   let queue=[],openBatch,flushing=false,refreshing=false;
-  let boundOwner='';
+  let boundOwner='',searchedQuery='';
   const read=(key)=>{try{return localStorage.getItem(key);}catch{return null;}};
   const write=(key,value)=>{try{localStorage.setItem(key,value);return true;}catch{return false;}};
   async function request(path,method='GET',payload) {
@@ -49,6 +49,7 @@
       if(data.authenticated&&!state.authenticated){data={...data,...state,me:null,friends:[],incoming:[],outgoing:[],ranking:[],myRank:null};return;}
       data={...data,...state};
       if(data.authenticated){await flush();const ranking=await request('rankings?scope='+data.scope);data.ranking=ranking.rows;data.myRank=ranking.me;data.week=ranking.week;data.today=ranking.today;}
+      if(data.authenticated&&searchedQuery)data.search=await request('search?q='+encodeURIComponent(searchedQuery));
     }catch(error){data.notice=error.message||'연결을 확인한 뒤 새로고침해 주세요.';}
     finally{data.loading=false;refreshing=false;}
   }
@@ -77,7 +78,12 @@
         if(action==='refresh')await refresh();
         else if(action==='privacy')location.assign('/privacy');
         else if(action==='scope'){data.scope=payload.scope==='all'?'all':'friends';await refresh();}
-        else if(action==='search'){data.search=null;data.search=await request('search?id='+encodeURIComponent((payload.id||'').trim().toUpperCase()));}
+        else if(action==='search'){
+          data.search=null;searchedQuery='';
+          const query=(payload.query||payload.id||'').trim();
+          if(!query||[...query].length>24)throw Error('닉네임을 1~24자로 입력해 주세요.');
+          data.search=await request('search?q='+encodeURIComponent(query));searchedQuery=query;
+        }
         else if(action==='copy'){if(!data.me)throw Error('로그인 후 아이디를 복사할 수 있어요.');await navigator.clipboard.writeText(data.me.id);data.notice='내 아이디를 복사했어요.';}
         else if(action==='logout'){await flush();await request('auth/logout','POST',{});write('wingstar.social.lastOwner','');location.replace('/?ranking=1');}
         else {

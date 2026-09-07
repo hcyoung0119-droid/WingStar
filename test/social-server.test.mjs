@@ -127,3 +127,48 @@ test('Monday boundaries use Korea time and missing Google configuration is an ho
     assert.equal((await f.call('auth/challenge',{method:'POST'})).status,503);
   }finally{f.close();}
 });
+
+test('nickname search supports duplicate/partial names, distinct relationships, and legacy IDs',async()=>{
+  const f=fixture();try{
+    const me=await f.login('searcher'),a=await f.login('duplicate-a'),b=await f.login('duplicate-b'),c=await f.login('partial-c');
+    for(const [person,nickname] of [[me,'산책 나'],[a,'산책 친구'],[b,'산책 친구'],[c,'오늘 산책 친구']])
+      assert.equal((await f.call('profile',{method:'PATCH',cookie:person.cookie,payload:{nickname,accent:'mint',badge:'heart',publicRanking:false}})).status,200);
+    const search=()=>f.call('search?q='+encodeURIComponent('산책'),{cookie:me.cookie});
+    assert.equal((await f.call('search?q='+encodeURIComponent('산책'))).status,401);
+    let results=(await search()).body.results;
+    assert.equal(results.length,4);assert.equal(results.filter(v=>v.user.nickname==='산책 친구').length,2);
+    assert.equal(new Set(results.map(v=>v.user.id)).size,4);
+    assert.equal(results.find(v=>v.user.id===me.me.id).relationship,'self');
+    assert.equal(JSON.stringify(results).includes('google:'),false);
+    assert.equal(results.find(v=>v.user.id===a.me.id).user.accent,'mint');
+    await f.call('friends/request',{method:'POST',cookie:me.cookie,payload:{id:a.me.id}});
+    await f.call('friends/request',{method:'POST',cookie:b.cookie,payload:{id:me.me.id}});
+    results=(await search()).body.results;
+    assert.equal(results.find(v=>v.user.id===a.me.id).relationship,'outgoing');
+    assert.equal(results.find(v=>v.user.id===b.me.id).relationship,'incoming');
+    assert.equal(results.find(v=>v.user.id===c.me.id).relationship,'none');
+    await f.call('friends/respond',{method:'POST',cookie:me.cookie,payload:{id:b.me.id,action:'accept'}});
+    assert.equal((await search()).body.results.find(v=>v.user.id===b.me.id).relationship,'friend');
+    assert.equal((await f.call('search?q='+b.me.id.toLowerCase(),{cookie:me.cookie})).body.results[0].user.id,b.me.id);
+    assert.equal((await f.call('search?id='+b.me.id,{cookie:me.cookie})).body.relationship,'friend');
+    assert.equal((await f.call('search?q='+encodeURIComponent('없는 친구'),{cookie:me.cookie})).body.results.length,0);
+  }finally{f.close();}
+});
+
+test('nickname search treats wildcard and SQL characters literally, bounds results and rejects invalid input',async()=>{
+  const f=fixture();try{
+    const me=await f.login('searcher');
+    const insert=f.env.DB.sqlite.prepare('INSERT INTO social_users(id,subject,public_id,nickname,created_at) VALUES(?,?,?,?,?)');
+    const names=['별%친구','별_친구','별!친구',String.raw`별\친구`,"별'친구",'별일반친구'];
+    for(let i=0;i<names.length;i++)insert.run('literal-'+i,'literal-'+i,'literal-code-'+i,names[i],f.now);
+    for(let i=0;i<5;i++) {
+      const result=await f.call('search?q='+encodeURIComponent(names[i].slice(0,2)),{cookie:me.cookie});
+      assert.equal(result.status,200);assert.deepEqual(result.body.results.map(v=>v.user.nickname),[names[i]]);
+    }
+    assert.equal((await f.call('search?q='+encodeURIComponent("%' OR 1=1 --"),{cookie:me.cookie})).body.results.length,0);
+    for(const input of ['', '  ', '가'.repeat(25), '친구\u0000'])assert.equal((await f.call('search?q='+encodeURIComponent(input),{cookie:me.cookie})).status,400);
+    for(let i=0;i<22;i++)insert.run('limit-'+i,'limit-'+i,'limit-code-'+i,'동명이인 '+i,f.now);
+    const result=await f.call('search?q='+encodeURIComponent('동명이인'),{cookie:me.cookie});
+    assert.equal(result.body.results.length,20);assert.equal(result.body.hasMore,true);
+  }finally{f.close();}
+});

@@ -207,6 +207,16 @@ class _RankingPanelState extends State<RankingPanel> {
           friends = social.list('friends'),
           ranking = social.list('ranking');
       final result = data['search'] as Map?;
+      final rawMatches = result?['results'];
+      final matches =
+          (rawMatches is List
+                  ? rawMatches
+                  : result?['user'] is Map
+                  ? [result]
+                  : <dynamic>[])
+              .whereType<Map>()
+              .where((match) => match['user'] is Map)
+              .toList();
       return ListView(
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 30),
         children: [
@@ -252,7 +262,7 @@ class _RankingPanelState extends State<RankingPanel> {
                   ),
                   const SizedBox(height: 12),
                   const Text(
-                    '내 아이디로 친구와 연결',
+                    '닉네임으로 친구와 연결',
                     style: TextStyle(fontSize: 19, fontWeight: FontWeight.w800),
                   ),
                   const SizedBox(height: 8),
@@ -369,57 +379,76 @@ class _RankingPanelState extends State<RankingPanel> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text(
-                    '아이디로 친구 찾기',
+                    '닉네임으로 친구 찾기',
                     style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
                   ),
                   const SizedBox(height: 10),
                   TextField(
                     controller: search,
-                    textCapitalization: TextCapitalization.characters,
+                    textCapitalization: TextCapitalization.none,
+                    textInputAction: TextInputAction.search,
                     autocorrect: false,
-                    maxLength: 13,
+                    maxLength: 24,
                     decoration: InputDecoration(
-                      hintText: 'WS-XXXXXXXXXX',
-                      labelText: '친구의 고유 아이디',
+                      hintText: '닉네임 일부만 입력해도 좋아요',
+                      labelText: '친구 닉네임',
+                      helperText: '기존 아이디로도 검색할 수 있어요.',
                       counterText: '',
                       suffixIcon: IconButton(
                         tooltip: '친구 검색',
                         onPressed: social.busy
                             ? null
-                            : () =>
-                                  social.action('search', {'id': search.text}),
+                            : () => social.action('search', {
+                                'query': search.text,
+                              }),
                         icon: const Icon(Icons.search),
                       ),
                     ),
                     onSubmitted: social.busy
                         ? null
-                        : (_) => social.action('search', {'id': search.text}),
+                        : (_) =>
+                              social.action('search', {'query': search.text}),
                   ),
-                  if (result != null)
+                  if (result != null) ...[
+                    const SizedBox(height: 8),
+                    Text(
+                      matches.isEmpty
+                          ? '검색 결과가 없어요. 다른 닉네임으로 찾아보세요.'
+                          : result['hasMore'] == true
+                          ? '결과가 많아 20명까지 보여드려요. 닉네임을 더 입력해 보세요.'
+                          : '‘${result['query'] ?? search.text}’ 검색 결과 ${matches.length}명 · 프로필을 확인해 주세요.',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: WSColors.muted,
+                        height: 1.5,
+                      ),
+                    ),
+                  ],
+                  for (final match in matches)
                     personRow(
-                      Map<String, dynamic>.from(result['user']),
-                      action: result['relationship'] == 'none'
+                      Map<String, dynamic>.from(match['user']),
+                      action: match['relationship'] == 'none'
                           ? TextButton(
                               onPressed: social.busy
                                   ? null
                                   : () => social.action('request', {
-                                      'id': result['user']['id'],
+                                      'id': match['user']['id'],
                                     }),
                               child: const Text('친구 요청'),
                             )
-                          : result['relationship'] == 'incoming'
+                          : match['relationship'] == 'incoming'
                           ? TextButton(
                               onPressed: social.busy
                                   ? null
                                   : () => social.action('accept', {
-                                      'id': result['user']['id'],
+                                      'id': match['user']['id'],
                                     }),
                               child: const Text('수락'),
                             )
                           : Text(
-                              result['relationship'] == 'self'
+                              match['relationship'] == 'self'
                                   ? '나'
-                                  : result['relationship'] == 'friend'
+                                  : match['relationship'] == 'friend'
                                   ? '친구'
                                   : '요청 보냄',
                               style: const TextStyle(
@@ -616,7 +645,7 @@ class _RankingPanelState extends State<RankingPanel> {
                     const Padding(
                       padding: EdgeInsets.only(top: 10),
                       child: Text(
-                        '아이디로 친구를 찾아 첫 요청을 보내보세요.',
+                        '닉네임으로 친구를 찾아 첫 요청을 보내보세요.',
                         style: TextStyle(fontSize: 13, color: WSColors.muted),
                       ),
                     ),
