@@ -39,6 +39,7 @@ app.build_configurations.each do |config|
 end
 extension.build_configurations.each do |config|
   config.build_settings.merge!({
+    'PRODUCT_NAME' => '$(TARGET_NAME)',
     'PRODUCT_BUNDLE_IDENTIFIER' => 'com.wingstar.personal.walking',
     'INFOPLIST_FILE' => 'WingstarLiveActivity/Info.plist',
     'GENERATE_INFOPLIST_FILE' => 'NO',

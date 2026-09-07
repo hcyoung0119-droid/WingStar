@@ -36,7 +36,13 @@ jobs:
           flutter analyze
           flutter test
       - name: Compile for a physical iPhone without Apple credentials
-        run: flutter build ios --release --no-codesign
+        run: |
+          mkdir -p build
+          flutter build ios --release --no-codesign --verbose > build/iphone-compile.log 2>&1 || {
+            tail -n 180 build/iphone-compile.log
+            exit 1
+          }
+          tail -n 20 build/iphone-compile.log
       - name: Package the unsigned app
         run: bash tool/package_iphone.sh
       - name: Keep the install file in a draft release
