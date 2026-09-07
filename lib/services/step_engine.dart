@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'platform_bridge.dart' as bridge;
 import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
@@ -49,12 +50,16 @@ class StepEngine extends ChangeNotifier {
   }
 
   bool get canUsePhysicalAccelerometer {
+    if (kIsWeb) return bridge.browserMotionSupported;
     return defaultTargetPlatform == TargetPlatform.android ||
         defaultTargetPlatform == TargetPlatform.iOS;
   }
 
   Future<void> start() async {
+    // Invoke iOS permission synchronously while the start tap is still active.
+    final webPermission = kIsWeb ? bridge.requestMotionAccess() : null;
     await stop(resetStatusOnly: true);
+    if (_disposed) return;
 
     steps = 0;
     currentMagnitude = 0;
@@ -73,21 +78,32 @@ class StepEngine extends ChangeNotifier {
       return;
     }
 
+    if (webPermission != null && await webPermission != 'granted') {
+      if (!_disposed) {
+        _markUnavailable('동작 센서 권한이 필요해요. Safari에서 권한을 허용한 뒤 다시 시작해 주세요.');
+      }
+      return;
+    }
+    if (_disposed) return;
     status = StepEngineStatus.calibrating;
     statusMessage = '휴대폰을 편하게 들고 3~5초만 기다려주세요.';
     _calibrationStartedAt = DateTime.now();
     _safeNotify();
 
     try {
-      _subscription = accelerometerEventStream(
-        samplingPeriod: SensorInterval.gameInterval,
-      ).listen(
-        _onAccelerometer,
-        onError: (Object error) {
-          _markUnavailable('가속도 센서 데이터를 읽지 못했습니다.');
-        },
-        cancelOnError: true,
-      );
+      _subscription =
+          (kIsWeb
+                  ? bridge.browserMotionEvents()
+                  : accelerometerEventStream(
+                      samplingPeriod: SensorInterval.gameInterval,
+                    ))
+              .listen(
+                _onAccelerometer,
+                onError: (Object error) {
+                  _markUnavailable('가속도 센서 데이터를 읽지 못했습니다.');
+                },
+                cancelOnError: true,
+              );
 
       _calibrationWatchdog = Timer.periodic(
         const Duration(milliseconds: 120),
@@ -201,8 +217,8 @@ class StepEngine extends ChangeNotifier {
       }
 
       if (movement <= lowThreshold) {
-        final cooldownPassed = _lastStepAt == null ||
-            now.difference(_lastStepAt!) >= stepCooldown;
+        final cooldownPassed =
+            _lastStepAt == null || now.difference(_lastStepAt!) >= stepCooldown;
 
         if (cooldownPassed) {
           steps += 1;
@@ -282,7 +298,8 @@ class StepEngine extends ChangeNotifier {
   double _standardDeviation(List<double> values) {
     if (values.length < 2) return double.infinity;
     final mean = values.reduce((a, b) => a + b) / values.length;
-    final variance = values
+    final variance =
+        values
             .map((v) => math.pow(v - mean, 2).toDouble())
             .reduce((a, b) => a + b) /
         values.length;

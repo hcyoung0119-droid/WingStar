@@ -1,5 +1,9 @@
 # Wingstar 프로그램 허브
 
+현재 통합본은 이전 WingStar UI를 유지하면서 최신 걸음·GPS 엔진을 연결합니다. 실행 방법과 데모 범위는 [업그레이드 안내](docs/UPGRADE.md)를 참고하세요.
+
+Premium 월 4,900원 / Membership+ 월 9,900원으로 가격을 확정했습니다. 실제 판매는 PG 가입·계약과 서버 연결 전까지 비활성 상태입니다. 구현 범위와 남은 작업은 [결제 연결 상태](docs/PAYMENTS.md)에 기록합니다.
+
 > **WALK FOR ME, WALK FOR EARTH.**
 
 Wingstar는 대학생 창업동아리에서 개발하는 **걷기 + 명상 + 플로깅 + ESG** 통합 앱 프로젝트입니다.
@@ -22,7 +26,7 @@ Wingstar는 대학생 창업동아리에서 개발하는 **걷기 + 명상 + 플
 ## 지원 목표
 Android APK/AAB · iPhone/iPad · Windows · macOS · Linux
 
-브라우저 버전은 의도적으로 제외하며 설치 후에는 독립 네이티브 앱으로 실행합니다.
+Windows·Android 네이티브 앱과 아이폰 Safari 홈 화면용 웹앱을 제공합니다. 웹앱은 `flutter build web --release --no-web-resources-cdn --pwa-strategy=none --output=dist`로 만들고 Sites로 배포합니다.
 
 ## 공개 다운로드
 빌드가 완료되면 아래 Releases 페이지에서 기기별 설치 파일을 받을 수 있습니다.

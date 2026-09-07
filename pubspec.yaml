@@ -4,13 +4,16 @@ publish_to: 'none'
 description: Wingstar - mindful walking, plogging and ESG MVP starter.
 
 environment:
-  sdk: '>=3.6.0 <4.0.0'
+  sdk: '>=3.10.0 <4.0.0'
 
 dependencies:
   flutter:
     sdk: flutter
   sensors_plus: ^7.1.0
   geolocator: ^14.0.3
+  intl: ^0.20.2
+  fl_chart: ^1.2.0
+  cupertino_icons: ^1.0.8
 
 dev_dependencies:
   flutter_test:
@@ -19,3 +22,9 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  assets:
+    - assets/images/sky.jpg
+  fonts:
+    - family: NotoSansKR
+      fonts:
+        - asset: assets/fonts/NotoSansKR.ttf

@@ -16,11 +16,13 @@ class LocationEngine extends ChangeNotifier {
 
   Future<void> start() async {
     await stop(resetStatusOnly: true);
+    if (_disposed) return;
     distanceMeters = 0;
     _lastPosition = null;
 
     try {
       final serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (_disposed) return;
       if (!serviceEnabled) {
         status = LocationStatus.serviceOff;
         message = '위치 서비스가 꺼져 있어 거리 측정은 생략합니다.';
@@ -29,8 +31,10 @@ class LocationEngine extends ChangeNotifier {
       }
 
       var permission = await Geolocator.checkPermission();
+      if (_disposed) return;
       if (permission == LocationPermission.denied) {
         permission = await Geolocator.requestPermission();
+        if (_disposed) return;
       }
 
       if (permission == LocationPermission.denied ||
